@@ -5,8 +5,8 @@ export type Theme = {
 
 export type User = {
   id: number;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   logo?: string;
 };
 
