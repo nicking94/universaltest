@@ -19,11 +19,18 @@ export const USERS = [
     id: 2,
     isTrial: true,
   },
-  //  Cliente actual 1
+  //  Cliente 1
   {
     username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_3,
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_3,
     id: 3,
+    isTrial: false,
+  },
+  //  Cliente 2
+  {
+    username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_4,
+    password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_4,
+    id: 4,
     isTrial: false,
   },
 ];
