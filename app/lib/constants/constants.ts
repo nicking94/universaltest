@@ -33,6 +33,13 @@ export const USERS = [
     id: 4,
     isTrial: false,
   },
+  //  Cliente 3
+  {
+    username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_5,
+    password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_5,
+    id: 5,
+    isTrial: false,
+  },
 ];
 export const PAYMENT_NOTIFICATION_USERNAME = "El pollo loco";
 
