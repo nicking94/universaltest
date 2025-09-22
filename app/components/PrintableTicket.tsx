@@ -127,7 +127,46 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       }
     };
 
+    const printWithBrowserDialog = () => {
+      // Crear una ventana temporal solo para imprimir
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+
+      printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Ticket de Venta</title>
+        <style>
+          body { 
+            font-family: 'Courier New', monospace; 
+            font-size: 12px; 
+            width: 80mm; 
+            margin: 0; 
+            padding: 10px;
+          }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        ${ticketRef.current?.innerHTML || ""}
+      </body>
+    </html>
+  `);
+
+      printWindow.document.close();
+      printWindow.print();
+      printWindow.close();
+    };
+
     const printTicket = async () => {
+      if (!("serial" in navigator) && !("usb" in navigator)) {
+        alert(
+          "Tu navegador no soporta impresión directa. Usa Chrome/Edge en versiones recientes."
+        );
+        return;
+      }
       if (onPrint) {
         onPrint();
         return;
@@ -168,6 +207,13 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             return;
           } catch (error) {
             console.warn("Error con WebUSB:", error);
+            const shouldUseBrowserPrint = confirm(
+              "No se encontró impresora térmica. ¿Deseas imprimir usando el diálogo estándar del navegador?"
+            );
+
+            if (shouldUseBrowserPrint) {
+              printWithBrowserDialog();
+            }
           }
         }
       } catch (error) {
