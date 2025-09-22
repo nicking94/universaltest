@@ -156,7 +156,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         if ("usb" in navigator) {
           try {
             const device = await navigator.usb.requestDevice({
-              filters: [{ vendorId: 0x0416, productId: 0x5011 }],
+              filters: [],
             });
 
             await device.open();
