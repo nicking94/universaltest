@@ -12,6 +12,8 @@ type PrintableTicketProps = {
   onPrint?: () => void;
   autoPrint?: boolean;
   businessData?: BusinessData;
+  // Props opcionales simplificadas
+  invoiceNumber?: string;
 };
 
 export type PrintableTicketHandle = {
@@ -23,23 +25,57 @@ interface PrintData {
   businessData?: BusinessData;
   rubro: Rubro;
   formattedDate: string;
+  invoiceNumber?: string;
 }
 
 const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
-  ({ sale, rubro, businessData, onPrint, autoPrint = false }, ref) => {
+  (
+    { sale, rubro, businessData, onPrint, autoPrint = false, invoiceNumber },
+    ref
+  ) => {
     const ticketRef = useRef<HTMLDivElement>(null);
     const fecha = format(parseISO(sale.date), "dd/MM/yyyy HH:mm", {
       locale: es,
     });
 
+    // Calcular número de factura si no se proporciona
+    const calculatedInvoiceNumber =
+      invoiceNumber ?? `${sale.id.toString().padStart(3, "0")}`;
+
+    // Función para calcular el precio con descuento
     const calculateDiscountedPrice = (
       price: number,
       quantity: number,
-      discountPercent?: number
+      discount?: number
     ): number => {
-      if (!discountPercent) return price * quantity;
-      return price * quantity * (1 - discountPercent / 100);
+      if (!discount) return price * quantity;
+      return price * quantity * (1 - discount / 100);
     };
+
+    // Convertir productos Sale al formato de items simplificado
+    const getInvoiceItems = () => {
+      return sale.products.map((product) => {
+        const subtotalSinDescuento = product.price * product.quantity;
+        const subtotalConDescuento = calculateDiscountedPrice(
+          product.price,
+          product.quantity,
+          product.discount
+        );
+
+        return {
+          description: getDisplayProductName(product, rubro),
+          quantity: product.quantity,
+          price: product.price,
+          subtotal: subtotalConDescuento,
+          unit: product.unit,
+          discount: product.discount,
+          subtotalSinDescuento: subtotalSinDescuento,
+          ahorro: subtotalSinDescuento - subtotalConDescuento,
+        };
+      });
+    };
+
+    const invoiceItems = getInvoiceItems();
 
     const shouldShowCustomerInfo = (): boolean => {
       return Boolean(
@@ -57,6 +93,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           businessData,
           rubro,
           formattedDate: fecha,
+          invoiceNumber: calculatedInvoiceNumber,
         };
 
         const response = await fetch(process.env.NEXT_PUBLIC_PRINT!, {
@@ -105,7 +142,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Ticket de Venta</title>
+            <title>Ticket ${calculatedInvoiceNumber}</title>
             <style>
               body { 
                 font-family: 'Courier New', monospace; 
@@ -116,6 +153,10 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
               }
               .center { text-align: center; }
               .bold { font-weight: bold; }
+              .text-right { text-align: right; }
+              .border-bottom { border-bottom: 1px dashed #000; }
+              .mt-2 { margin-top: 8px; }
+              .discount { color: #666; font-size: 10px; }
             </style>
           </head>
           <body>
@@ -152,106 +193,101 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           lineHeight: 1.2,
         }}
       >
+        {/* Encabezado del negocio */}
         <div className="mb-2">
-          <h2 className="font-bold text-sm text-center mb-1">
+          <h2 className="text-center font-bold text-sm mb-1">
             {businessData?.name || "Universal App"}
           </h2>
-          <p>
-            <span className="font-semibold">Dirección: </span>
+          <p className="text-xs">
             {businessData?.address || "Calle Falsa 123"}
           </p>
-          <p>
-            <span className="font-semibold">Tel: </span>
-            {businessData?.phone || "123-456789"}
+          <p className="text-xs">Tel: {businessData?.phone || "123-456789"}</p>
+          <p className="text-xs">
+            CUIT: {businessData?.cuit || "12-34567890-1"}
           </p>
-          <p>
-            <span className="font-semibold">CUIT: </span>
-            {businessData?.cuit || "12-34567890-1"}
-          </p>
+        </div>
 
+        {/* Información del ticket */}
+        <div className="border-b border-black py-1 mb-2">
+          <p className="font-bold">TICKET #{calculatedInvoiceNumber}</p>
+          <p>{fecha}</p>
+          {/* Información del cliente */}
           {shouldShowCustomerInfo() && (
-            <p>
-              <span className="font-semibold">Cliente: </span>
-              {sale.customerName}
-            </p>
+            <div className="py-2">
+              <p className="font-semibold">Cliente: {sale.customerName}</p>
+              {sale.customerPhone && (
+                <p className="text-xs">Tel: {sale.customerPhone}</p>
+              )}
+            </div>
           )}
         </div>
 
-        <div className="py-1 border-b border-black ">
-          <p className="font-bold">TICKET #{sale.id}</p>
-          <p>{fecha}</p>
-        </div>
-        <div className="mb-2 mt-4">
-          {sale.products.map((product, idx) => {
-            const discountedPrice = calculateDiscountedPrice(
-              product.price,
-              product.quantity,
-              product.discount
-            );
-
-            return (
-              <div
-                key={idx}
-                className="flex justify-between items-center mb-1 border-b border-gray_xl"
-              >
-                <div className="flex items-center w-full gap-4">
-                  <span className="font-bold w-24 text-xs text-[.8rem]">
-                    {getDisplayProductName(product, rubro)}
-                  </span>
-                  <div className="flex flex-col text-center px-2 text-xs min-w-20">
-                    {product.quantity} {product.unit?.toLowerCase() || "un"}
-                    <span className="text-[.6rem]">($ {product.price})</span>
+        {/* Items del ticket */}
+        <div className="mb-2">
+          {invoiceItems.map((item, index) => (
+            <div key={index} className="border-b border-gray-200 py-1">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <span className="font-semibold">{item.description}</span>
+                  <div className="text-xs text-gray-600">
+                    {item.quantity} {item.unit} x {formatCurrency(item.price)}
                   </div>
                 </div>
-
-                <div className="flex flex-col items-end">
-                  <span>{formatCurrency(discountedPrice)}</span>
-                  {product.discount && (
-                    <span className="text-xs text-gray-500">
-                      (-{product.discount}%)
-                    </span>
+                <div className="text-right ml-2">
+                  <div className="font-semibold">
+                    {formatCurrency(item.subtotal)}
+                  </div>
+                  {/* Mostrar descuento debajo del total */}
+                  {item.discount && item.discount > 0 && (
+                    <div className="text-xs text-gray_m discount">
+                      descuento: {item.discount}%
+                    </div>
                   )}
                 </div>
               </div>
-            );
-          })}
-          {sale.manualAmount === undefined ||
-            (sale.manualAmount > 0 && (
-              <div className="mt-4">
-                <span className="w-full">
-                  ---------------------------------------
-                </span>
-                <div className="flex justify-between">
-                  <span className="uppercase font-semibold">Monto Manual:</span>
-                  <span>{formatCurrency(sale.manualAmount)}</span>
-                </div>
-                <span className="w-full">
-                  ---------------------------------------
-                </span>
-              </div>
-            ))}
+            </div>
+          ))}
         </div>
 
+        {/* Monto manual si existe */}
+        {sale.manualAmount !== undefined && sale.manualAmount > 0 && (
+          <div className="mt-2  pt-2">
+            <div className="flex justify-between">
+              <span className="uppercase font-semibold">Monto Manual:</span>
+              <span>{formatCurrency(sale.manualAmount)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Total */}
+        <div className="border-t border-black pt-2 mt-4">
+          <div className="flex justify-between font-bold text-sm">
+            <span>TOTAL:</span>
+            <span>{formatCurrency(sale.total)}</span>
+          </div>
+        </div>
+
+        {/* Métodos de pago */}
         {sale.paymentMethods?.length > 0 && !sale.credit && (
-          <div className="mb-2 mt-10 space-y-1">
+          <div className="mb-2 mt-4 space-y-1 border-t border-gray-300 pt-2">
             {sale.paymentMethods.map((method, idx) => (
-              <div key={idx} className="flex justify-between">
+              <div key={idx} className="flex justify-between text-xs">
                 <span>{method.method}:</span>
                 <span>{formatCurrency(method.amount)}</span>
               </div>
             ))}
           </div>
         )}
+
+        {/* Información de cuenta corriente */}
         {sale.credit && (
           <div className="text-center font-bold text-red_b mb-2 border-t border-black pt-2">
             ** CUENTA CORRIENTE **
             {sale.customerName && <p>Cliente: {sale.customerName}</p>}
           </div>
         )}
-        <div className="flex justify-between font-bold text-sm border-t border-black pt-4">
-          <span>TOTAL:</span>
-          <span>{formatCurrency(sale.total)}</span>
-        </div>
+
+        {/* Pie del ticket (sin comentarios) */}
         <div className="text-center mt-4 text-xs border-t border-black pt-2">
           <p>¡Gracias por su compra!</p>
           <p>Conserve este ticket</p>

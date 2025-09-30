@@ -1538,7 +1538,7 @@ const VentasPage = () => {
                 </div>
               }
             >
-              <div className=" w-full min-w-[180mm] overflow-y-auto dark:bg-gray_b">
+              <div className="w-full min-w-[180mm] overflow-y-auto dark:bg-gray_b">
                 <PrintableTicket
                   ref={ticketRef}
                   sale={selectedSale}
