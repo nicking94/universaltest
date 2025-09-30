@@ -18,6 +18,13 @@ export type PrintableTicketHandle = {
   print: () => Promise<void>;
 };
 
+interface PrintData {
+  sale: Sale;
+  businessData?: BusinessData;
+  rubro: Rubro;
+  formattedDate: string;
+}
+
 const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
   ({ sale, rubro, businessData, onPrint, autoPrint = false }, ref) => {
     const ticketRef = useRef<HTMLDivElement>(null);
@@ -34,191 +41,95 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       return price * quantity * (1 - discountPercent / 100);
     };
 
-    const generateEscPosCommands = (): Uint8Array => {
-      const commands: number[] = [];
-      commands.push(0x1b, 0x40);
-      commands.push(0x1b, 0x52, 0x08);
-      commands.push(0x1b, 0x74, 0x10);
-      commands.push(0x1b, 0x21, 0x08);
-      pushText(commands, `${businessData?.name || "Mi Negocio"}\n`);
-      commands.push(0x1b, 0x21, 0x00);
-
-      pushText(commands, `${businessData?.address || "Dirección"}\n`);
-      pushText(commands, `Tel: ${businessData?.phone || "N/A"}\n`);
-      pushText(commands, `CUIT: ${businessData?.cuit || "N/A"}\n\n`);
-
-      commands.push(0x1b, 0x61, 0x01);
-      pushText(commands, "------------------------------\n");
-      commands.push(0x1b, 0x61, 0x00);
-
-      pushText(commands, `TICKET #${sale.id}\n`);
-      pushText(commands, `${fecha}\n\n`);
-
-      sale.products.forEach((product) => {
-        const productName = getDisplayProductName(product, rubro);
-        const truncatedName =
-          productName.length > 24
-            ? productName.substring(0, 21) + "..."
-            : productName;
-
-        pushText(commands, `${truncatedName}\n`);
-        pushText(
-          commands,
-          `${product.quantity} ${
-            product.unit?.toLowerCase() || "un"
-          } x ${formatCurrency(product.price)}`
-        );
-
-        if (product.discount) {
-          pushText(commands, ` (-${product.discount}%)\n`);
-        } else {
-          commands.push(0x0a);
-        }
-
-        const subtotal = calculateDiscountedPrice(
-          product.price,
-          product.quantity,
-          product.discount
-        );
-
-        pushText(commands, `Subtotal: ${formatCurrency(subtotal)}\n\n`);
-      });
-
-      commands.push(0x1b, 0x61, 0x01);
-      pushText(commands, "------------------------------\n");
-      commands.push(0x1b, 0x61, 0x02);
-
-      pushText(commands, `TOTAL: ${formatCurrency(sale.total)}\n\n`);
-
-      if (sale.paymentMethods?.length > 0 && !sale.credit) {
-        sale.paymentMethods.forEach((method) => {
-          pushText(
-            commands,
-            `${method.method}: ${formatCurrency(method.amount)}\n`
-          );
-        });
-      }
-
-      if (sale.credit) {
-        commands.push(0x1b, 0x61, 0x01);
-        commands.push(0x1b, 0x21, 0x08);
-        pushText(commands, "** CUENTA CORRIENTE **\n");
-        commands.push(0x1b, 0x21, 0x00);
-
-        if (sale.customerName) {
-          pushText(commands, `Cliente: ${sale.customerName}\n`);
-        }
-      }
-
-      commands.push(0x1b, 0x61, 0x01);
-      pushText(commands, "\n¡GRACIAS POR SU COMPRA!\n");
-      pushText(commands, "Conserve este ticket\n");
-      pushText(commands, "------------------------------\n");
-      pushText(commands, "Ticket no válido como factura\n\n");
-
-      commands.push(0x1d, 0x56, 0x41, 0x00);
-
-      return new Uint8Array(commands);
+    const shouldShowCustomerInfo = (): boolean => {
+      return Boolean(
+        !sale.credit &&
+          sale.customerName &&
+          sale.customerName !== "CLIENTE OCASIONAL" &&
+          sale.customerName.trim() !== ""
+      );
     };
 
-    const pushText = (commands: number[], text: string) => {
-      for (let i = 0; i < text.length; i++) {
-        commands.push(text.charCodeAt(i));
+    const sendToPrintEndpoint = async (): Promise<void> => {
+      try {
+        const printData: PrintData = {
+          sale,
+          businessData,
+          rubro,
+          formattedDate: fecha,
+        };
+
+        const response = await fetch(process.env.NEXT_PUBLIC_PRINT!, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(printData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error en la impresión: ${response.statusText}`);
+        }
+
+        if (onPrint) {
+          onPrint();
+        }
+      } catch (error) {
+        console.error("Error al enviar datos al endpoint de impresión:", error);
+        throw error;
+      }
+    };
+
+    const printTicket = async (): Promise<void> => {
+      try {
+        await sendToPrintEndpoint();
+      } catch (error) {
+        console.error("Error en el proceso de impresión:", error);
+        const shouldUseBrowserPrint = confirm(
+          "No se pudo conectar con el servicio de impresión. ¿Deseas imprimir usando el diálogo estándar del navegador?"
+        );
+
+        if (shouldUseBrowserPrint) {
+          printWithBrowserDialog();
+        } else {
+          throw error;
+        }
       }
     };
 
     const printWithBrowserDialog = () => {
-      // Crear una ventana temporal solo para imprimir
       const printWindow = window.open("", "_blank");
       if (!printWindow) return;
 
       printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Ticket de Venta</title>
-        <style>
-          body { 
-            font-family: 'Courier New', monospace; 
-            font-size: 12px; 
-            width: 80mm; 
-            margin: 0; 
-            padding: 10px;
-          }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        ${ticketRef.current?.innerHTML || ""}
-      </body>
-    </html>
-  `);
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Ticket de Venta</title>
+            <style>
+              body { 
+                font-family: 'Courier New', monospace; 
+                font-size: 12px; 
+                width: 80mm; 
+                margin: 0; 
+                padding: 10px;
+              }
+              .center { text-align: center; }
+              .bold { font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            ${ticketRef.current?.innerHTML || ""}
+          </body>
+        </html>
+      `);
 
       printWindow.document.close();
       printWindow.print();
       printWindow.close();
-    };
 
-    const printTicket = async () => {
-      if (!("serial" in navigator) && !("usb" in navigator)) {
-        alert(
-          "Tu navegador no soporta impresión directa. Usa Chrome/Edge en versiones recientes."
-        );
-        return;
-      }
       if (onPrint) {
         onPrint();
-        return;
-      }
-
-      try {
-        const escPosData = generateEscPosCommands();
-        if ("serial" in navigator) {
-          try {
-            const port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 9600 });
-
-            if (!port.writable) {
-              throw new Error("El puerto serial no es escribible");
-            }
-
-            const writer = port.writable.getWriter();
-            await writer.write(escPosData);
-            await writer.close();
-            await port.close();
-            return;
-          } catch (error) {
-            console.warn("Error con Web Serial:", error);
-          }
-        }
-        if ("usb" in navigator) {
-          try {
-            const device = await navigator.usb.requestDevice({
-              filters: [],
-            });
-
-            await device.open();
-            await device.selectConfiguration(1);
-            await device.claimInterface(0);
-
-            await device.transferOut(1, escPosData);
-            await device.close();
-            return;
-          } catch (error) {
-            console.warn("Error con WebUSB:", error);
-            const shouldUseBrowserPrint = confirm(
-              "No se encontró impresora térmica. ¿Deseas imprimir usando el diálogo estándar del navegador?"
-            );
-
-            if (shouldUseBrowserPrint) {
-              printWithBrowserDialog();
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error al imprimir:", error);
-        throw error;
       }
     };
 
@@ -257,7 +168,15 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             <span className="font-semibold">CUIT: </span>
             {businessData?.cuit || "12-34567890-1"}
           </p>
+
+          {shouldShowCustomerInfo() && (
+            <p>
+              <span className="font-semibold">Cliente: </span>
+              {sale.customerName}
+            </p>
+          )}
         </div>
+
         <div className="py-1 border-b border-black ">
           <p className="font-bold">TICKET #{sale.id}</p>
           <p>{fecha}</p>
@@ -324,7 +243,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           </div>
         )}
         {sale.credit && (
-          <div className="text-center font-bold text-red-500 mb-2 border-t border-black pt-2">
+          <div className="text-center font-bold text-red_b mb-2 border-t border-black pt-2">
             ** CUENTA CORRIENTE **
             {sale.customerName && <p>Cliente: {sale.customerName}</p>}
           </div>

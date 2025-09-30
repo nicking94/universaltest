@@ -935,14 +935,14 @@ const VentasPage = () => {
         setSelectedSale(saleToSave);
         setIsInfoModalOpen(true);
         //desactivado temporalmente
-        // setTimeout(() => {
-        //   if (ticketRef.current) {
-        //     ticketRef.current.print().catch((error) => {
-        //       console.error("Error al imprimir ticket:", error);
-        //       showNotification("Error al imprimir ticket", "error");
-        //     });
-        //   }
-        // }, 100);
+        setTimeout(() => {
+          if (ticketRef.current) {
+            ticketRef.current.print().catch((error) => {
+              console.error("Error al imprimir ticket:", error);
+              showNotification("Error al imprimir ticket", "error");
+            });
+          }
+        }, 100);
       }
 
       if (isCredit && registerCheck) {
@@ -1516,17 +1516,15 @@ const VentasPage = () => {
                 <div className="flex justify-end gap-4">
                   {/* desactivado temporalmente */}
                   <Button
-                    // title="Imprimir ticket"
-                    title="Desactivado temporalmente"
-                    text="Imprimir (desactivado temporalmente)"
+                    title="Imprimir ticket"
+                    text="Imprimir"
                     icon={<Printer size={18} />}
                     colorText="text-white"
                     colorTextHover="hover:text-white"
                     px="px-1"
                     py="py-1"
                     onClick={handlePrintTicket}
-                    // disabled={selectedSale?.credit}
-                    disabled
+                    disabled={selectedSale?.credit}
                   />
                   <Button
                     title="Cerrar"
