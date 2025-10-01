@@ -147,7 +147,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
               body { 
                 font-family: 'Courier New', monospace; 
                 font-size: 12px; 
-                width: 80mm; 
+                width: 57mm; 
                 margin: 0; 
                 padding: 10px;
               }
@@ -187,22 +187,24 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
     return (
       <div
         ref={ticketRef}
-        className="max-h-[66vh] overflow-y-auto p-2 pb-4 w-[80mm] mx-auto font-mono text-xs bg-white text-gray_b"
+        className="max-h-[66vh] overflow-y-auto p-2 pb-4 w-[57mm] mx-auto font-mono text-[0.7rem] bg-white text-gray_b"
         style={{
           fontFamily: "'Courier New', monospace",
           lineHeight: 1.2,
         }}
       >
         {/* Encabezado del negocio */}
-        <div className="mb-2">
+        <div className="mb-4">
           <h2 className="text-center font-bold text-sm mb-1">
             {businessData?.name || "Universal App"}
           </h2>
-          <p className="text-xs">
+          <p className="text-[0.7rem]">
             {businessData?.address || "Calle Falsa 123"}
           </p>
-          <p className="text-xs">Tel: {businessData?.phone || "123-456789"}</p>
-          <p className="text-xs">
+          <p className="text-[0.7rem]">
+            Tel: {businessData?.phone || "123-456789"}
+          </p>
+          <p className="text-[0.7rem]">
             CUIT: {businessData?.cuit || "12-34567890-1"}
           </p>
         </div>
@@ -216,7 +218,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             <div className="py-2">
               <p className="font-semibold">Cliente: {sale.customerName}</p>
               {sale.customerPhone && (
-                <p className="text-xs">Tel: {sale.customerPhone}</p>
+                <p className="text-[0.7rem]">Tel: {sale.customerPhone}</p>
               )}
             </div>
           )}
@@ -229,7 +231,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <span className="font-semibold">{item.description}</span>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-[0.7rem] text-gray-600">
                     {item.quantity} {item.unit} x {formatCurrency(item.price)}
                   </div>
                 </div>
@@ -239,7 +241,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                   </div>
                   {/* Mostrar descuento debajo del total */}
                   {item.discount && item.discount > 0 && (
-                    <div className="text-xs text-gray_m discount">
+                    <div className="text-[0.7rem] text-gray_m discount">
                       descuento: {item.discount}%
                     </div>
                   )}
@@ -258,6 +260,18 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             </div>
           </div>
         )}
+        {sale.paymentMethods?.length > 0 && !sale.credit && (
+          <div className="mb-2 mt-4 space-y-1 border-t border-gray_m pt-2">
+            <span className="text-center font-semibold">Formas de pago</span>
+
+            {sale.paymentMethods.map((method, idx) => (
+              <div key={idx} className="flex justify-between text-[0.7rem]">
+                <span>{method.method}:</span>
+                <span>{formatCurrency(method.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Total */}
         <div className="border-t border-black pt-2 mt-4">
@@ -268,18 +282,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         </div>
 
         {/* Métodos de pago */}
-        {sale.paymentMethods?.length > 0 && !sale.credit && (
-          <div className="mb-2 mt-4 space-y-1 border-t border-gray-300 pt-2">
-            {sale.paymentMethods.map((method, idx) => (
-              <div key={idx} className="flex justify-between text-xs">
-                <span>{method.method}:</span>
-                <span>{formatCurrency(method.amount)}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
-        {/* Información de cuenta corriente */}
         {sale.credit && (
           <div className="text-center font-bold text-red_b mb-2 border-t border-black pt-2">
             ** CUENTA CORRIENTE **
@@ -287,8 +290,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           </div>
         )}
 
-        {/* Pie del ticket (sin comentarios) */}
-        <div className="text-center mt-4 text-xs border-t border-black pt-2">
+        <div className="text-center mt-4 text-[0.7rem] border-t border-black pt-2">
           <p>¡Gracias por su compra!</p>
           <p>Conserve este ticket</p>
           <p>---</p>
