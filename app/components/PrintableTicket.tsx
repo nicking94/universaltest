@@ -12,21 +12,12 @@ type PrintableTicketProps = {
   onPrint?: () => void;
   autoPrint?: boolean;
   businessData?: BusinessData;
-  // Props opcionales simplificadas
   invoiceNumber?: string;
 };
 
 export type PrintableTicketHandle = {
   print: () => Promise<void>;
 };
-// COMENTADO: Función de impresión por endpoint
-// interface PrintData {
-//   sale: Sale;
-//   businessData?: BusinessData;
-//   rubro: Rubro;
-//   formattedDate: string;
-//   invoiceNumber?: string;
-// }
 
 const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
   (
@@ -38,11 +29,9 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       locale: es,
     });
 
-    // Calcular número de factura si no se proporciona
     const calculatedInvoiceNumber =
       invoiceNumber ?? `${sale.id.toString().padStart(3, "0")}`;
 
-    // Función para calcular el precio con descuento
     const calculateDiscountedPrice = (
       price: number,
       quantity: number,
@@ -52,7 +41,6 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       return price * quantity * (1 - discount / 100);
     };
 
-    // Convertir productos Sale al formato de items simplificado
     const getInvoiceItems = () => {
       return sale.products.map((product) => {
         const subtotalSinDescuento = product.price * product.quantity;
@@ -86,52 +74,8 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       );
     };
 
-    // COMENTADO: Función de impresión por endpoint
-    /*
-    const sendToPrintEndpoint = async (): Promise<void> => {
-      try {
-        const printData: PrintData = {
-          sale,
-          businessData,
-          rubro,
-          formattedDate: fecha,
-          invoiceNumber: calculatedInvoiceNumber,
-        };
-
-        const response = await fetch(process.env.NEXT_PUBLIC_PRINT!, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(printData),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Error en la impresión: ${response.statusText}`);
-        }
-
-        if (onPrint) {
-          onPrint();
-        }
-      } catch (error) {
-        console.error("Error al enviar datos al endpoint de impresión:", error);
-        throw error;
-      }
-    };
-    */
-
     const printTicket = async (): Promise<void> => {
-      try {
-        // COMENTADO: Ya no se usa el endpoint de impresión
-        // await sendToPrintEndpoint();
-
-        // Siempre usar impresión del navegador
-        printWithBrowserDialog();
-      } catch (error) {
-        console.error("Error en el proceso de impresión:", error);
-        // En caso de error, igualmente usar el diálogo del navegador
-        printWithBrowserDialog();
-      }
+      printWithBrowserDialog();
     };
 
     const printStyles = `
@@ -139,28 +83,44 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         * {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          box-sizing: border-box;
         }
-        body { 
-          font-family: 'Courier New', monospace !important; 
-          font-size: 12px !important; 
-          width: 57mm !important; 
-          margin: 0 !important; 
+        body {
+          font-family: 'Courier New', monospace !important;
+          font-size: 12px !important;
+          width: 57mm !important;
+          margin: 0 !important;
           padding: 10px !important;
           line-height: 1.2 !important;
+          background: white !important;
+          color: black !important;
+          overflow: visible !important;
+          max-height: none !important;
+        }
+        .ticket-container {
+          width: 57mm !important;
+          margin: 0 auto !important;
+          padding: 0 !important;
+          background: white !important;
+          overflow: visible !important;
+          max-height: none !important;
         }
         .center { text-align: center !important; }
-        .bold, .font-bold, .font-semibold { 
-          font-weight: bold !important; 
+        .bold, .font-bold, .font-semibold {
+          font-weight: bold !important;
         }
         .text-right { text-align: right !important; }
-        .border-bottom, .border-b { 
-          border-bottom: 1px solid #000 !important; 
+        .border-bottom, .border-b {
+          border-bottom: 1px solid #000 !important;
         }
-        .border-top, .border-t { 
-          border-top: 1px solid #000 !important; 
+        .border-top, .border-t {
+          border-top: 1px solid #000 !important;
         }
-        .border-gray-200 { 
-          border-bottom: 1px solid #d1d5db !important; 
+        .border-bottom-dashed {
+          border-bottom: 1px dashed #000 !important;
+        }
+        .border-top-dashed {
+          border-top: 1px dashed #000 !important;
         }
         .mt-2 { margin-top: 8px !important; }
         .mt-4 { margin-top: 16px !important; }
@@ -179,8 +139,6 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         .text-sm { font-size: 14px !important; }
         .text-\[0\.7rem\] { font-size: 11px !important; }
         .space-y-1 > * + * { margin-top: 4px !important; }
-        .max-h-\[66vh\] { max-height: none !important; }
-        .overflow-y-auto { overflow: visible !important; }
         .w-\[57mm\] { width: 57mm !important; }
         .mx-auto { margin-left: auto !important; margin-right: auto !important; }
         .bg-white { background: white !important; }
@@ -190,6 +148,23 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         .text-red_b { color: #dc2626 !important; }
         .discount { color: #666 !important; font-size: 10px !important; }
         .uppercase { text-transform: uppercase !important; }
+        
+        /* Eliminar cualquier scroll o limitación de altura */
+        .no-scroll {
+          max-height: none !important;
+          overflow: visible !important;
+          height: auto !important;
+        }
+      }
+      
+      /* Estilos para pantalla */
+      @media screen {
+        .ticket-preview {
+          max-height: 66vh;
+          overflow-y: auto;
+          width: 57mm;
+          margin: 0 auto;
+        }
       }
     `;
 
@@ -197,8 +172,9 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       const printWindow = window.open("", "_blank");
       if (!printWindow) return;
 
-      // Obtener el HTML del ticket
-      const ticketHTML = ticketRef.current?.innerHTML || "";
+      // Obtener el HTML limpio del ticket (solo el contenido interno)
+      const ticketContent =
+        ticketRef.current?.querySelector(".ticket-content")?.innerHTML || "";
 
       printWindow.document.write(`
         <!DOCTYPE html>
@@ -209,52 +185,46 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             <style>
               ${printStyles}
               
-              /* Estilos específicos para impresión */
-              body { 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px; 
-                width: 57mm; 
-                margin: 0 auto; 
+              /* Estilos base para la ventana de impresión */
+              body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                width: 57mm;
+                margin: 0 auto;
                 padding: 10px;
                 line-height: 1.2;
                 background: white;
                 color: black;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
               }
               
-              /* Forzar estilos que puedan perderse */
+              .ticket-container {
+                width: 57mm;
+                margin: 0 auto;
+                background: white;
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
+              
+              /* Prevenir saltos de página dentro del ticket */
               .ticket-container * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
+                page-break-inside: avoid;
+                break-inside: avoid;
               }
               
-              /* Estilos específicos para bordes */
-              .border-force {
-                border: 1px solid #000 !important;
+              .border-bottom-dashed {
+                border-bottom: 1px dashed #000 !important;
               }
               
-              .border-bottom-force {
-                border-bottom: 1px dotted #000 !important;
-              }
-              
-              .border-top-force {
-                border-top: 1px solid #000 !important;
-              }
-              
-              /* Asegurar que los textos se centren */
-              .text-center-force {
-                text-align: center !important;
-              }
-              
-              /* Asegurar negritas */
-              .bold-force {
-                font-weight: bold !important;
+              .border-top-dashed {
+                border-top: 1px dashed #000 !important;
               }
             </style>
           </head>
           <body>
-            <div class="ticket-container">
-              ${ticketHTML}
+            <div class="ticket-container no-scroll">
+              ${ticketContent}
             </div>
             
             <script>
@@ -264,9 +234,17 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                   window.print();
                   setTimeout(() => {
                     window.close();
-                  }, 100);
-                }, 250);
+                  }, 500);
+                }, 500);
               };
+              
+              // Fallback en caso de que onload falle
+              setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                  window.close();
+                }, 500);
+              }, 2000);
             </script>
           </body>
         </html>
@@ -290,7 +268,9 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
     }, [autoPrint]);
 
     return (
-      <div className="max-h-[66vh]  overflow-y-auto ">
+      // Contenedor para preview (solo en pantalla)
+      <div className="ticket-preview">
+        {/* Contenedor principal del ticket */}
         <div
           ref={ticketRef}
           className="ticket-container p-2 pb-4 w-[57mm] mx-auto font-mono text-[0.7rem] bg-white text-gray_b"
@@ -299,113 +279,113 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             lineHeight: 1.2,
           }}
         >
-          {/* Encabezado del negocio */}
-          <div className="mb-4 text-center-force">
-            <h2 className="text-center font-bold text-sm mb-1 bold-force center">
-              {businessData?.name || "Universal App"}
-            </h2>
-            <p className="text-[0.7rem]">
-              {businessData?.address || "Calle Falsa 123"}
-            </p>
-            <p className="text-[0.7rem]">
-              Tel: {businessData?.phone || "123-456789"}
-            </p>
-            <p className="text-[0.7rem]">
-              CUIT: {businessData?.cuit || "12-34567890-1"}
-            </p>
-          </div>
-
-          {/* Información del ticket */}
-          <div className="border-bottom border-black py-1 mb-2 border-bottom-force">
-            <p className="font-bold bold-force">
-              TICKET #{calculatedInvoiceNumber}
-            </p>
-            <p>{fecha}</p>
-            {/* Información del cliente */}
-            {shouldShowCustomerInfo() && (
-              <div className="py-2 border-b border-black">
-                <p className="font-semibold">Cliente: {sale.customerName}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-2">
-            {invoiceItems.map((item, index) => (
-              <div
-                key={index}
-                className="border-bottom border-gray-200 py-1 border-bottom-force"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <span className="font-semibold">{item.description}</span>
-                    <div className="text-[0.7rem] text-gray-800">
-                      x{item.quantity} {item.unit}{" "}
-                      <span className="text-[0.5rem]">
-                        ({formatCurrency(item.price)}
-                      </span>
-                      )
-                    </div>
-                  </div>
-                  <div className="text-right ml-2">
-                    <div className="font-semibold">
-                      {formatCurrency(item.subtotal)}
-                    </div>
-                    {/* Mostrar descuento debajo del total */}
-                    {item.discount && item.discount > 0 && (
-                      <div className="text-[0.7rem] text-gray_m discount">
-                        desc. {item.discount}%
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Monto manual si existe */}
-          {sale.manualAmount !== undefined && sale.manualAmount > 0 && (
-            <div className="mt-2  pt-2">
-              <div className="flex justify-between">
-                <span className="uppercase font-semibold">Monto Manual:</span>
-                <span>{formatCurrency(sale.manualAmount)}</span>
-              </div>
+          {/* Contenido del ticket - este es el que se imprime */}
+          <div className="ticket-content">
+            {/* Encabezado del negocio */}
+            <div className="mb-4 text-center">
+              <h2 className="text-center font-bold text-sm mb-1">
+                {businessData?.name || "Universal App"}
+              </h2>
+              <p className="text-[0.7rem]">
+                {businessData?.address || "Calle Falsa 123"}
+              </p>
+              <p className="text-[0.7rem]">
+                Tel: {businessData?.phone || "123-456789"}
+              </p>
+              <p className="text-[0.7rem]">
+                CUIT: {businessData?.cuit || "12-34567890-1"}
+              </p>
             </div>
-          )}
-          {sale.paymentMethods?.length > 0 && !sale.credit && (
-            <div className="mb-2 mt-4 space-y-1 border-t border-gray_m pt-2">
-              <span className="text-center font-semibold">Formas de pago</span>
 
-              {sale.paymentMethods.map((method, idx) => (
-                <div key={idx} className="flex justify-between text-[0.7rem]">
-                  <span>{method.method}:</span>
-                  <span>{formatCurrency(method.amount)}</span>
+            {/* Información del ticket */}
+            <div className="border-b border-black py-1 mb-2">
+              <p className="font-bold">TICKET #{calculatedInvoiceNumber}</p>
+              <p>{fecha}</p>
+              {/* Información del cliente */}
+              {shouldShowCustomerInfo() && (
+                <div className="py-2 border-b border-black">
+                  <p className="font-semibold">Cliente: {sale.customerName}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Items del ticket */}
+            <div className="mb-2">
+              {invoiceItems.map((item, index) => (
+                <div key={index} className="border-b border-gray-300 py-1">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <span className="font-semibold">{item.description}</span>
+                      <div className="text-[0.7rem] text-gray-600">
+                        x{item.quantity} {item.unit}{" "}
+                        <span className="text-[0.6rem]">
+                          ({formatCurrency(item.price)})
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right ml-2">
+                      <div className="font-semibold">
+                        {formatCurrency(item.subtotal)}
+                      </div>
+                      {item.discount && item.discount > 0 && (
+                        <div className="text-[0.7rem] text-gray-500">
+                          desc. {item.discount}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          )}
 
-          {/* Total */}
-          <div className="border-t border-black pt-2 mt-4">
-            <div className="flex justify-between font-bold text-sm">
-              <span>TOTAL:</span>
-              <span>{formatCurrency(sale.total)}</span>
+            {/* Monto manual si existe */}
+            {sale.manualAmount !== undefined && sale.manualAmount > 0 && (
+              <div className="mt-2 pt-2">
+                <div className="flex justify-between">
+                  <span className="uppercase font-semibold">Monto Manual:</span>
+                  <span>{formatCurrency(sale.manualAmount)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Formas de pago */}
+            {sale.paymentMethods?.length > 0 && !sale.credit && (
+              <div className="mb-2 mt-4 space-y-1 border-t border-gray-400 pt-2">
+                <span className="text-center font-semibold block">
+                  Formas de pago
+                </span>
+                {sale.paymentMethods.map((method, idx) => (
+                  <div key={idx} className="flex justify-between text-[0.7rem]">
+                    <span>{method.method}:</span>
+                    <span>{formatCurrency(method.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Total */}
+            <div className="border-t border-black pt-2 mt-4">
+              <div className="flex justify-between font-bold text-sm">
+                <span>TOTAL:</span>
+                <span>{formatCurrency(sale.total)}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Métodos de pago */}
+            {/* Cuenta corriente */}
+            {sale.credit && (
+              <div className="text-center font-bold text-red-600 mb-2 border-t border-black pt-2 mt-4">
+                ** CUENTA CORRIENTE **
+                {sale.customerName && <p>Cliente: {sale.customerName}</p>}
+              </div>
+            )}
 
-          {sale.credit && (
-            <div className="text-center font-bold text-red_b mb-2 border-t border-black pt-2">
-              ** CUENTA CORRIENTE **
-              {sale.customerName && <p>Cliente: {sale.customerName}</p>}
+            {/* Pie del ticket */}
+            <div className="text-center mt-4 text-[0.7rem] border-t border-black pt-2">
+              <p>¡Gracias por su compra!</p>
+              <p>Conserve este ticket</p>
+              <p>---</p>
+              <p>Ticket no válido como factura</p>
             </div>
-          )}
-
-          <div className="text-center mt-4 text-[0.7rem] border-t border-black pt-2">
-            <p>¡Gracias por su compra!</p>
-            <p>Conserve este ticket</p>
-            <p>---</p>
-            <p>Ticket no válido como factura</p>
           </div>
         </div>
       </div>
