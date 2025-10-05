@@ -1477,7 +1477,7 @@ const VentasPage = () => {
                           <td className="p-2 border border-gray_xl">
                             <div className="flex justify-center items-center gap-2 h-full">
                               <Button
-                                title="Imprimir ticket"
+                                title="Imprimir ticket (Beta)"
                                 icon={<Printer size={18} />}
                                 colorText="text-gray_b"
                                 colorTextHover="hover:text-white"
@@ -1516,8 +1516,8 @@ const VentasPage = () => {
                 <div className="flex justify-end gap-4">
                   {/* desactivado temporalmente */}
                   <Button
-                    title="Imprimir ticket"
-                    text="Imprimir"
+                    title="Imprimir ticket (Beta)"
+                    text="Imprimir (Beta)"
                     icon={<Printer size={18} />}
                     colorText="text-white"
                     colorTextHover="hover:text-white"
