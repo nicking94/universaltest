@@ -124,8 +124,8 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           font-size: ${paperSize === "80mm" ? "14px" : "12px"} !important;
           width: ${width} !important;
           margin: 0 !important;
-          padding: 10px !important;
-          line-height: 1.2 !important;
+          padding: 5px !important;
+          line-height: 1 !important;
           background: white !important;
           color: black !important;
           overflow: visible !important;
@@ -156,39 +156,6 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         .border-top-dashed {
           border-top: 1px dashed #000 !important;
         }
-        .mt-2 { margin-top: 8px !important; }
-        .mt-4 { margin-top: 16px !important; }
-        .mb-2 { margin-bottom: 8px !important; }
-        .mb-4 { margin-bottom: 16px !important; }
-        .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
-        .py-2 { padding-top: 8px !important; padding-bottom: 8px !important; }
-        .pt-2 { padding-top: 8px !important; }
-        .pb-4 { padding-bottom: 16px !important; }
-        .ml-2 { margin-left: 8px !important; }
-        .flex { display: flex !important; }
-        .flex-1 { flex: 1 !important; }
-        .justify-between { justify-content: space-between !important; }
-        .items-start { align-items: flex-start !important; }
-        .text-center { text-align: center !important; }
-        .text-sm { font-size: ${
-          paperSize === "80mm" ? "16px" : "14px"
-        } !important; }
-        .text-\[0\.7rem\] { font-size: ${
-          paperSize === "80mm" ? "12px" : "11px"
-        } !important; }
-        .space-y-1 > * + * { margin-top: 4px !important; }
-        .w-\[57mm\] { width: ${width} !important; }
-        .w-\[80mm\] { width: ${width} !important; }
-        .mx-auto { margin-left: auto !important; margin-right: auto !important; }
-        .bg-white { background: white !important; }
-        .text-gray_b { color: #4b5563 !important; }
-        .text-gray-600 { color: #6b7280 !important; }
-        .text-gray_m { color: #6b7280 !important; }
-        .text-red_b { color: #dc2626 !important; }
-        .discount { color: #666 !important; font-size: ${
-          paperSize === "80mm" ? "11px" : "10px"
-        } !important; }
-        .uppercase { text-transform: uppercase !important; }
         
         /* Eliminar cualquier scroll o limitación de altura */
         .no-scroll {
@@ -196,16 +163,12 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           overflow: visible !important;
           height: auto !important;
         }
-      }
-      
-      /* Estilos para pantalla */
-      @media screen {
-        .ticket-preview {
-          max-height: 56vh;
-          overflow-y: auto;
-          width: ${width};
-          margin: 0 auto;
-        }
+
+        /* Estilos específicos para elementos del ticket */
+        .ticket-line { margin: 0 !important; padding: 0 !important; line-height: 1 !important; }
+        .ticket-section { margin: 2px 0 !important; padding: 0 !important; }
+        .ticket-item { margin: 1px 0 !important; padding: 0 !important; }
+        .compact-text { line-height: 1 !important; margin: 0 !important; padding: 0 !important; }
       }
     `;
     };
@@ -214,7 +177,6 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       const printWindow = window.open("", "_blank");
       if (!printWindow) return;
 
-      // Obtener el HTML limpio del ticket (solo el contenido interno)
       const ticketContent =
         ticketRef.current?.querySelector(".ticket-content")?.innerHTML || "";
 
@@ -227,14 +189,14 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             <style>
               ${getPrintStyles()}
               
-              /* Estilos base para la ventana de impresión */
+              /* Estilos base para TODOS los modos (pantalla e impresión) */
               body {
                 font-family: 'Courier New', monospace;
                 font-size: ${paperSize === "80mm" ? "14px" : "12px"};
                 width: ${paperSize === "80mm" ? "80mm" : "57mm"};
                 margin: 0 auto;
-                padding: 10px;
-                line-height: 1.2;
+                padding: 5px;
+                line-height: 1;
                 background: white;
                 color: black;
                 -webkit-print-color-adjust: exact;
@@ -255,12 +217,45 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                 break-inside: avoid;
               }
               
+              /* ESTILOS COMPACTOS APLICADOS A TODOS LOS ELEMENTOS */
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                line-height: 1 !important;
+              }
+              
+              p, div, span {
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+              }
+              
               .border-bottom-dashed {
                 border-bottom: 1px dashed #000 !important;
               }
               
               .border-top-dashed {
                 border-top: 1px dashed #000 !important;
+              }
+              
+              .ticket-line { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                line-height: 1 !important; 
+              }
+              .ticket-section { 
+                margin: 2px 0 !important; 
+                padding: 0 !important; 
+              }
+              .ticket-item { 
+                margin: 1px 0 !important; 
+                padding: 0 !important; 
+              }
+              .compact-text { 
+                line-height: 1 !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
               }
             </style>
           </head>
@@ -270,7 +265,6 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             </div>
             
             <script>
-              // Esperar a que cargue el contenido antes de imprimir
               window.onload = function() {
                 setTimeout(() => {
                   window.print();
@@ -280,7 +274,6 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                 }, 500);
               };
               
-              // Fallback en caso de que onload falle
               setTimeout(() => {
                 window.print();
                 setTimeout(() => {
@@ -309,24 +302,245 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       }
     }, [autoPrint]);
 
+    // Estilos CSS para el componente
+    const styles = {
+      container: {
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "12px",
+      },
+      paperSelector: {
+        backgroundColor: "#eff6ff",
+        border: "1px solid #bfdbfe",
+        borderRadius: "8px",
+        padding: "12px",
+      },
+      paperSelectorTitle: {
+        textAlign: "center" as const,
+        marginBottom: "8px",
+      },
+      paperSelectorText: {
+        fontSize: "12px",
+        color: "#2563eb",
+      },
+      paperOptions: {
+        display: "flex",
+        justifyContent: "center",
+        gap: "24px",
+      },
+      paperOption: {
+        display: "flex",
+        flexDirection: "column" as const,
+        alignItems: "center",
+        cursor: "pointer",
+      },
+      paperOptionBox: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "8px 12px",
+        borderRadius: "8px",
+        border: "2px solid",
+        transition: "all 0.2s ease",
+      },
+      paperOptionText: {
+        fontWeight: "500",
+      },
+      paperOptionLabel: {
+        fontSize: "11px",
+        color: "#6b7280",
+        marginTop: "4px",
+      },
+      previewContainer: {
+        maxHeight: "50vh",
+        overflowY: "scroll" as const,
+      },
+      ticketContainer: {
+        fontFamily: "'Courier New', monospace",
+        lineHeight: 1,
+        backgroundColor: "white",
+        color: "#2c2c2c",
+        margin: "0 auto",
+        padding: "4px",
+        paddingBottom: "4px",
+        width: paperSize === "80mm" ? "80mm" : "57mm",
+        fontSize: paperSize === "80mm" ? "12px" : "10px",
+      },
+      ticketContent: {
+        lineHeight: 1,
+      },
+      businessHeader: {
+        marginBottom: "4px",
+        textAlign: "center" as const,
+      },
+      businessName: {
+        textAlign: "center" as const,
+        fontWeight: "bold",
+        marginBottom: "0",
+        fontSize: paperSize === "80mm" ? "14px" : "12px",
+        lineHeight: 1,
+      },
+      businessInfo: {
+        lineHeight: 1,
+        margin: "0",
+        padding: "0",
+        fontSize: paperSize === "80mm" ? "11px" : "9px",
+      },
+      ticketInfo: {
+        padding: "0",
+        marginBottom: "4px",
+      },
+      separator: {
+        margin: "0",
+        padding: "0",
+        lineHeight: 1,
+      },
+      ticketNumber: {
+        fontWeight: "bold",
+        padding: "0",
+        margin: "0",
+        lineHeight: 1,
+      },
+      ticketDate: {
+        padding: "0",
+        margin: "0",
+        lineHeight: 1,
+      },
+      customerInfo: {
+        padding: "0",
+      },
+      customerText: {
+        fontWeight: "600",
+        padding: "0",
+        margin: "0",
+        lineHeight: 1,
+      },
+      itemsContainer: {
+        marginBottom: "4px",
+      },
+      item: {
+        padding: "0",
+        margin: "1px 0",
+      },
+      itemRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+      },
+      itemDescription: {
+        flex: 1,
+      },
+      itemName: {
+        fontWeight: "600",
+        lineHeight: 1,
+      },
+      itemDetails: {
+        lineHeight: 1,
+        color: "#6b7280",
+        fontSize: paperSize === "80mm" ? "10px" : "8px",
+      },
+      itemPrice: {
+        fontSize: paperSize === "80mm" ? "9px" : "7px",
+      },
+      itemTotal: {
+        textAlign: "right" as const,
+        marginLeft: "4px",
+      },
+      itemAmount: {
+        fontWeight: "600",
+        lineHeight: 1,
+      },
+      discountText: {
+        lineHeight: 1,
+        color: "#6b7280",
+        fontSize: paperSize === "80mm" ? "9px" : "7px",
+      },
+      manualAmount: {
+        marginTop: "4px",
+        paddingTop: "0",
+      },
+      manualAmountRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        lineHeight: 1,
+      },
+      manualAmountText: {
+        textTransform: "uppercase" as const,
+        fontWeight: "600",
+      },
+      paymentMethods: {
+        marginBottom: "4px",
+        marginTop: "4px",
+        paddingTop: "0",
+      },
+      paymentTitle: {
+        textAlign: "center" as const,
+        fontWeight: "600",
+        display: "block",
+        lineHeight: 1,
+      },
+      paymentRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "0",
+        lineHeight: 1,
+        fontSize: paperSize === "80mm" ? "10px" : "8px",
+      },
+      totalSection: {
+        paddingTop: "0",
+        marginTop: "4px",
+      },
+      totalRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontWeight: "bold",
+        lineHeight: 1,
+      },
+      creditSection: {
+        textAlign: "center" as const,
+        fontWeight: "bold",
+        color: "#dc2626",
+        marginBottom: "0",
+        paddingTop: "0",
+        marginTop: "4px",
+      },
+      footer: {
+        textAlign: "center" as const,
+        marginTop: "4px",
+        paddingTop: "0",
+        fontSize: paperSize === "80mm" ? "10px" : "8px",
+      },
+      footerText: {
+        margin: "0",
+        padding: "0",
+        lineHeight: 1,
+      },
+      smallText: {
+        fontSize: "6px",
+        margin: "0",
+        padding: "0",
+        lineHeight: 1,
+      },
+    };
+
     return (
-      <div className="space-y-4">
-        {/* Selector de tamaño de papel con guía para el usuario */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-center mb-3">
-            <p className="text-xs text-blue-600">
+      <div style={styles.container}>
+        {/* Selector de tamaño de papel */}
+        <div style={styles.paperSelector}>
+          <div style={styles.paperSelectorTitle}>
+            <p style={styles.paperSelectorText}>
               Selecciona el tamaño del rollo de ticket
             </p>
           </div>
 
-          <div className="flex justify-center space-x-6">
-            <label className="flex flex-col items-center cursor-pointer group">
+          <div style={styles.paperOptions}>
+            <label style={styles.paperOption}>
               <div
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                  paperSize === "57mm"
-                    ? "border-blue_m bg-blue_xxl"
-                    : "border-gray-300 bg-white group-hover:border-blue_m"
-                }`}
+                style={{
+                  ...styles.paperOptionBox,
+                  borderColor: paperSize === "57mm" ? "#268ed4" : "#d1d5db",
+                  backgroundColor: paperSize === "57mm" ? "#eaf6ff" : "white",
+                }}
               >
                 <input
                   type="radio"
@@ -336,26 +550,29 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                   onChange={(e) =>
                     handlePaperSizeChange(e.target.value as "57mm" | "80mm")
                   }
-                  className="text-blue_m focus:ring-blue_m"
+                  style={{
+                    color: "#268ed4",
+                  }}
                 />
                 <span
-                  className={`font-medium ${
-                    paperSize === "57mm" ? "text-blue_b" : "text-gray_b"
-                  }`}
+                  style={{
+                    ...styles.paperOptionText,
+                    color: paperSize === "57mm" ? "#2d78b9" : "#2c2c2c",
+                  }}
                 >
                   57mm
                 </span>
               </div>
-              <span className="text-xs text-gray-500 mt-1">Estándar</span>
+              <span style={styles.paperOptionLabel}>Estándar</span>
             </label>
 
-            <label className="flex flex-col items-center cursor-pointer group">
+            <label style={styles.paperOption}>
               <div
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                  paperSize === "80mm"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-300 bg-white group-hover:border-blue-300"
-                }`}
+                style={{
+                  ...styles.paperOptionBox,
+                  borderColor: paperSize === "80mm" ? "#3b82f6" : "#d1d5db",
+                  backgroundColor: paperSize === "80mm" ? "#eff6ff" : "white",
+                }}
               >
                 <input
                   type="radio"
@@ -365,231 +582,168 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                   onChange={(e) =>
                     handlePaperSizeChange(e.target.value as "57mm" | "80mm")
                   }
-                  className="text-blue-600 focus:ring-blue-500"
+                  style={{
+                    color: "#3b82f6",
+                  }}
                 />
                 <span
-                  className={`font-medium ${
-                    paperSize === "80mm" ? "text-blue-700" : "text-gray-700"
-                  }`}
+                  style={{
+                    ...styles.paperOptionText,
+                    color: paperSize === "80mm" ? "#1d4ed8" : "#374151",
+                  }}
                 >
                   80mm
                 </span>
               </div>
-              <span className="text-xs text-gray-500 mt-1">Ancho</span>
+              <span style={styles.paperOptionLabel}>Ancho</span>
             </label>
           </div>
         </div>
 
         {/* Contenedor para preview (solo en pantalla) */}
-        <div className="max-h-[50vh] overflow-y-scroll">
+        <div style={styles.previewContainer}>
           {/* Contenedor principal del ticket */}
-          <div
-            ref={ticketRef}
-            className={`ticket-container p-2 pb-4 mx-auto font-mono bg-white text-gray_b ${
-              paperSize === "80mm"
-                ? "w-[80mm] text-[12px]"
-                : "w-[57mm] text-[0.7rem]"
-            }`}
-            style={{
-              fontFamily: "'Courier New', monospace",
-              lineHeight: 1.2,
-            }}
-          >
+          <div ref={ticketRef} style={styles.ticketContainer}>
             {/* Contenido del ticket - este es el que se imprime */}
-            <div className="ticket-content">
+            <div className="ticket-content" style={styles.ticketContent}>
               {/* Encabezado del negocio */}
-              <div className="mb-4 text-center">
-                <h2
-                  className={`text-center font-bold mb-1 ${
-                    paperSize === "80mm" ? "text-[16px]" : "text-sm"
-                  }`}
-                >
+              <div style={styles.businessHeader}>
+                <h2 style={styles.businessName}>
                   {businessData?.name || "Universal App"}
                 </h2>
-                <p
-                  className={
-                    paperSize === "80mm" ? "text-[12px]" : "text-[0.7rem]"
-                  }
-                >
+                <p style={styles.businessInfo}>
                   {businessData?.address || "Calle Falsa 123"}
                 </p>
-                <p
-                  className={
-                    paperSize === "80mm" ? "text-[12px]" : "text-[0.7rem]"
-                  }
-                >
+                <p style={styles.businessInfo}>
                   Tel: {businessData?.phone || "123-456789"}
                 </p>
-                <p
-                  className={
-                    paperSize === "80mm" ? "text-[12px]" : "text-[0.7rem]"
-                  }
-                >
+                <p style={styles.businessInfo}>
                   CUIT: {businessData?.cuit || "12-34567890-1"}
                 </p>
               </div>
 
               {/* Información del ticket */}
-              <div className="py-1 mb-2">
-                {paperSize === "80mm" ? (
-                  <p>---------------------------------------</p>
-                ) : (
-                  <p>-----------------------------</p>
-                )}
-                <p className="font-bold">TICKET #{calculatedInvoiceNumber}</p>
-                <p>{fecha}</p>
+              <div style={styles.ticketInfo}>
+                <p style={styles.separator}>
+                  {paperSize === "80mm"
+                    ? "---------------------------------------"
+                    : "-----------------------------"}
+                </p>
+                <p style={styles.ticketNumber}>
+                  TICKET #{calculatedInvoiceNumber}
+                </p>
+                <p style={styles.ticketDate}>{fecha}</p>
                 {/* Información del cliente */}
                 {shouldShowCustomerInfo() && (
-                  <div className="py-2">
-                    <p className="font-semibold">
+                  <div style={styles.customerInfo}>
+                    <p style={styles.customerText}>
                       Cliente: {sale.customerName}
                     </p>
                   </div>
                 )}
-                {paperSize === "80mm" ? (
-                  <p>---------------------------------------</p>
-                ) : (
-                  <p>-----------------------------</p>
-                )}
+                <p style={styles.separator}>
+                  {paperSize === "80mm"
+                    ? "---------------------------------------"
+                    : "-----------------------------"}
+                </p>
               </div>
 
               {/* Items del ticket */}
-              <div className="mb-2">
+              <div style={styles.itemsContainer}>
                 {invoiceItems.map((item, index) => (
-                  <div key={index} className="py-1">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <span className="font-semibold">
-                          {item.description}
-                        </span>
-                        <div
-                          className={
-                            paperSize === "80mm"
-                              ? "text-[12px] text-gray-600"
-                              : "text-[0.7rem] text-gray-600"
-                          }
-                        >
+                  <div key={index} style={styles.item}>
+                    <div style={styles.itemRow}>
+                      <div style={styles.itemDescription}>
+                        <span style={styles.itemName}>{item.description}</span>
+                        <div style={styles.itemDetails}>
                           x{item.quantity} {item.unit}{" "}
-                          <span
-                            className={
-                              paperSize === "80mm"
-                                ? "text-[11px]"
-                                : "text-[0.6rem]"
-                            }
-                          >
+                          <span style={styles.itemPrice}>
                             ({formatCurrency(item.price)})
                           </span>
                         </div>
                       </div>
-                      <div className="text-right ml-2">
-                        <div className="font-semibold">
+                      <div style={styles.itemTotal}>
+                        <div style={styles.itemAmount}>
                           {formatCurrency(item.subtotal)}
                         </div>
                         {item.discount && item.discount > 0 && (
-                          <div
-                            className={
-                              paperSize === "80mm"
-                                ? "text-[12px] text-gray-500"
-                                : "text-[0.7rem] text-gray-500"
-                            }
-                          >
+                          <div style={styles.discountText}>
                             desc. {item.discount}%
                           </div>
                         )}
                       </div>
                     </div>
-                    {paperSize === "80mm" ? (
-                      <p>________________________________________</p>
-                    ) : (
-                      <p>_____________________________</p>
-                    )}
+                    <p style={styles.separator}>
+                      {paperSize === "80mm"
+                        ? "________________________________________"
+                        : "_____________________________"}
+                    </p>
                   </div>
                 ))}
               </div>
 
               {sale.manualAmount !== undefined && sale.manualAmount > 0 && (
-                <div className="mt-2 pt-2">
-                  <div className="flex justify-between">
-                    <span className="uppercase font-semibold">
-                      Monto Manual:
-                    </span>
+                <div style={styles.manualAmount}>
+                  <div style={styles.manualAmountRow}>
+                    <span style={styles.manualAmountText}>Monto Manual:</span>
                     <span>{formatCurrency(sale.manualAmount)}</span>
                   </div>
-                  {paperSize === "80mm" ? (
-                    <p>---------------------------------------</p>
-                  ) : (
-                    <p>-----------------------------</p>
-                  )}
+                  <p style={styles.separator}>
+                    {paperSize === "80mm"
+                      ? "---------------------------------------"
+                      : "-----------------------------"}
+                  </p>
                 </div>
               )}
 
               {/* Formas de pago */}
               {sale.paymentMethods?.length > 0 && !sale.credit && (
-                <div className="mb-2 mt-4 space-y-1 pt-2">
-                  <span className="text-center font-semibold block">
-                    Formas de pago
-                  </span>
+                <div style={styles.paymentMethods}>
+                  <span style={styles.paymentTitle}>Formas de pago</span>
                   {sale.paymentMethods.map((method, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex justify-between ${
-                        paperSize === "80mm" ? "text-[12px]" : "text-[0.7rem]"
-                      }`}
-                    >
+                    <div key={idx} style={styles.paymentRow}>
                       <span>{method.method}:</span>
                       <span>{formatCurrency(method.amount)}</span>
                     </div>
                   ))}
-                  {paperSize === "80mm" ? (
-                    <p>________________________________________</p>
-                  ) : (
-                    <p>_____________________________</p>
-                  )}
                 </div>
               )}
 
               {/* Total */}
-              <div className="pt-2 mt-4">
-                {paperSize === "80mm" ? (
-                  <p>---------------------------------------</p>
-                ) : (
-                  <p>-----------------------------</p>
-                )}
+              <div style={styles.totalSection}>
+                <p style={styles.separator}>
+                  {paperSize === "80mm"
+                    ? "---------------------------------------"
+                    : "-----------------------------"}
+                </p>
 
-                <div className="flex justify-between font-bold text-sm">
+                <div style={styles.totalRow}>
                   <span>TOTAL:</span>
                   <span>{formatCurrency(sale.total)}</span>
                 </div>
-                {paperSize === "80mm" ? (
-                  <p>---------------------------------------</p>
-                ) : (
-                  <p>-----------------------------</p>
-                )}
+                <p style={styles.separator}>
+                  {paperSize === "80mm"
+                    ? "---------------------------------------"
+                    : "-----------------------------"}
+                </p>
               </div>
 
               {/* Cuenta corriente */}
               {sale.credit && (
-                <div className="text-center font-bold text-red-600 mb-2 pt-2 mt-4">
-                  ** CUENTA CORRIENTE **
-                  {sale.customerName && <p>Cliente: {sale.customerName}</p>}
+                <div style={styles.creditSection}>
+                  <p style={styles.footerText}>** CUENTA CORRIENTE **</p>
+                  {sale.customerName && (
+                    <p style={styles.footerText}>
+                      Cliente: {sale.customerName}
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* Pie del ticket */}
-              <div
-                className={`text-center mt-4 pt-2 ${
-                  paperSize === "80mm" ? "text-[12px]" : "text-[0.7rem]"
-                }`}
-              >
-                <p>¡Gracias por su compra!</p>
-                <p>Conserve este ticket</p>
-                {paperSize === "80mm" ? (
-                  <p>---------------------------------</p>
-                ) : (
-                  <p>-------------------------</p>
-                )}
-
-                <p>Ticket no válido como factura</p>
+              <div style={styles.footer}>
+                <p style={styles.footerText}>¡Gracias por su compra!</p>
+                <p style={styles.smallText}>Ticket no válido como factura</p>
               </div>
             </div>
           </div>
