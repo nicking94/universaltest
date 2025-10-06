@@ -151,6 +151,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         body {
           font-family: 'Courier New', monospace !important;
           font-size: ${ticketConfig.fontSize.medium} !important;
+          font-weight: normal !important;
           width: ${ticketConfig.width} !important;
           margin: 0 !important;
           padding: ${ticketConfig.padding} !important;
@@ -169,22 +170,46 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
           max-height: none !important;
         }
         
-        /* ESTILOS ESPECÍFICOS PARA MEJORAR LEGIBILIDAD */
-        .business-info, .footer-text, .payment-methods {
-          font-size: ${ticketConfig.fontSize.medium} !important;
+        /* SOLO ELEMENTOS ESPECÍFICOS EN BOLD */
+        .business-name {
+          font-size: ${ticketConfig.fontSize.large} !important;
           font-weight: bold !important;
           line-height: 1.3 !important;
+          color: black !important;
+        }
+        
+        .product-name {
+          font-weight: bold !important;
+          color: black !important;
+        }
+        
+        .product-price {
+          font-weight: bold !important;
+          color: black !important;
+        }
+        
+        .payment-title {
+          font-weight: bold !important;
+          color: black !important;
+        }
+        
+        .total-amount {
+          font-weight: bold !important;
+          font-size: ${ticketConfig.fontSize.large} !important;
+          color: black !important;
         }
         
         .small-text {
           font-size: ${ticketConfig.fontSize.xsmall} !important;
           font-weight: normal !important;
           line-height: 1.2 !important;
+          color: black !important;
         }
         
         .center { text-align: center !important; }
         .bold, .font-bold, .font-semibold {
           font-weight: bold !important;
+          color: black !important;
         }
         .text-right { text-align: right !important; }
         .border-bottom, .border-b {
@@ -208,10 +233,15 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         }
 
         /* Estilos específicos para elementos del ticket */
-        .ticket-line { margin: 0 !important; padding: 0 !important; line-height: 1.2 !important; }
-        .ticket-section { margin: 4px 0 !important; padding: 0 !important; }
-        .ticket-item { margin: 3px 0 !important; padding: 0 !important; }
-        .compact-text { line-height: 1.2 !important; margin: 0 !important; padding: 0 !important; }
+        .ticket-line { margin: 0 !important; padding: 0 !important; line-height: 1.2 !important; color: black !important; }
+        .ticket-section { margin: 4px 0 !important; padding: 0 !important; color: black !important; }
+        .ticket-item { margin: 3px 0 !important; padding: 0 !important; color: black !important; }
+        .compact-text { line-height: 1.2 !important; margin: 0 !important; padding: 0 !important; color: black !important; }
+        
+        /* FORZAR COLOR NEGRO EN TODOS LOS ELEMENTOS */
+        * {
+          color: black !important;
+        }
       }
     `;
     };
@@ -236,6 +266,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
               body {
                 font-family: 'Courier New', monospace;
                 font-size: ${ticketConfig.fontSize.medium};
+                font-weight: normal;
                 width: ${ticketConfig.width};
                 margin: 0 auto;
                 padding: ${ticketConfig.padding};
@@ -254,17 +285,40 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                 break-inside: avoid;
               }
               
-              /* CLASES ESPECÍFICAS PARA MEJORAR LEGIBILIDAD EN IMPRESIÓN */
-              .business-info, .footer-text, .payment-methods {
-                font-size: ${ticketConfig.fontSize.medium} !important;
+              /* SOLO ELEMENTOS ESPECÍFICOS EN BOLD */
+              .business-name {
+                font-size: ${ticketConfig.fontSize.large} !important;
                 font-weight: bold !important;
                 line-height: 1.3 !important;
+                color: black !important;
+              }
+              
+              .product-name {
+                font-weight: bold !important;
+                color: black !important;
+              }
+              
+              .product-price {
+                font-weight: bold !important;
+                color: black !important;
+              }
+              
+              .payment-title {
+                font-weight: bold !important;
+                color: black !important;
+              }
+              
+              .total-amount {
+                font-weight: bold !important;
+                font-size: ${ticketConfig.fontSize.large} !important;
+                color: black !important;
               }
               
               .small-text {
                 font-size: ${ticketConfig.fontSize.xsmall} !important;
                 font-weight: normal !important;
                 line-height: 1.2 !important;
+                color: black !important;
               }
               
               /* Prevenir saltos de página dentro del ticket */
@@ -279,12 +333,16 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                 padding: 0;
                 box-sizing: border-box;
                 line-height: 1.2 !important;
+                font-weight: normal !important;
+                color: black !important;
               }
               
               p, div, span {
                 margin: 0 !important;
                 padding: 0 !important;
                 line-height: 1.2 !important;
+                font-weight: normal !important;
+                color: black !important;
               }
               
               .border-bottom-dashed {
@@ -299,19 +357,23 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                 margin: 0 !important; 
                 padding: 0 !important; 
                 line-height: 1.2 !important; 
+                color: black !important;
               }
               .ticket-section { 
                 margin: 4px 0 !important; 
                 padding: 0 !important; 
+                color: black !important;
               }
               .ticket-item { 
                 margin: 3px 0 !important; 
                 padding: 0 !important; 
+                color: black !important;
               }
               .compact-text { 
                 line-height: 1.2 !important; 
                 margin: 0 !important; 
                 padding: 0 !important; 
+                color: black !important;
               }
             </style>
           </head>
@@ -358,13 +420,14 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       }
     }, [autoPrint]);
 
-    // Estilos CSS para el componente usando configuraciones estándar
+    // Estilos CSS para el componente - Todo en color negro
     const styles = {
       container: {
         display: "flex",
         flexDirection: "column" as const,
         gap: "12px",
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       paperSelector: {
         backgroundColor: "#eff6ff",
@@ -379,6 +442,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
       paperSelectorText: {
         fontSize: "15px",
         color: "#2563eb",
+        fontWeight: "normal" as const,
       },
       paperOptions: {
         display: "flex",
@@ -416,163 +480,195 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         fontFamily: "'Courier New', monospace",
         lineHeight: 1.2,
         backgroundColor: "white",
-        color: "#2c2c2c",
+        color: "#000",
         margin: "0 auto",
         padding: ticketConfig.padding,
         paddingBottom: ticketConfig.padding,
         width: ticketConfig.width,
         fontSize: ticketConfig.fontSize.medium,
+        fontWeight: "normal" as const,
       },
       ticketContent: {
         lineHeight: 1.2,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       businessHeader: {
-        marginBottom: "8px",
+        marginBottom: "12px",
         textAlign: "center" as const,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       businessName: {
         textAlign: "center" as const,
-        fontWeight: "bold",
-        marginBottom: "4px",
+        fontWeight: "bold" as const,
+        marginBottom: "6px",
         fontSize: ticketConfig.fontSize.large,
         lineHeight: 1.3,
+        color: "#000",
       },
       businessInfo: {
         lineHeight: 1.3,
-        margin: "3px 0",
+        margin: "4px 0",
         padding: "0",
         fontSize: ticketConfig.fontSize.medium,
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       ticketInfo: {
         padding: "0",
-        marginBottom: "8px",
+        marginBottom: "12px",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       separator: {
-        margin: "6px 0",
+        margin: "8px 0",
         padding: "0",
         lineHeight: 1,
         borderBottom: "1px solid #000",
         height: "1px",
       },
       doubleSeparator: {
-        margin: "6px 0",
+        margin: "8px 0",
         padding: "0",
         lineHeight: 1,
         borderBottom: "2px solid #000",
         height: "2px",
       },
       dashedSeparator: {
-        margin: "5px 0",
+        margin: "6px 0",
         padding: "0",
         lineHeight: 1,
         borderBottom: "1px dashed #000",
         height: "1px",
       },
       ticketNumber: {
-        fontWeight: "bold",
+        fontWeight: "normal" as const,
         padding: "0",
-        margin: "4px 0",
+        margin: "6px 0",
         lineHeight: 1.2,
         fontSize: ticketConfig.fontSize.medium,
+        color: "#000",
       },
       ticketDate: {
         padding: "0",
-        margin: "4px 0",
+        margin: "6px 0",
         lineHeight: 1.2,
         fontSize: ticketConfig.fontSize.medium,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       customerInfo: {
         padding: "0",
-        margin: "6px 0",
+        margin: "8px 0",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       customerText: {
-        fontWeight: "600",
+        fontWeight: "normal" as const,
         padding: "0",
-        margin: "3px 0",
+        margin: "4px 0",
         lineHeight: 1.2,
         fontSize: ticketConfig.fontSize.medium,
+        color: "#000",
       },
       itemsContainer: {
-        marginBottom: "8px",
+        marginBottom: "12px",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       item: {
         padding: "0",
-        margin: "6px 0",
+        margin: "8px 0",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       itemRow: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
         gap: "6px",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       itemDescription: {
         flex: 1,
-        minWidth: 0, // Para prevenir overflow
+        minWidth: 0,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       itemName: {
-        fontWeight: "600",
+        fontWeight: "bold" as const,
         lineHeight: 1.3,
         fontSize: ticketConfig.fontSize.medium,
         wordWrap: "break-word" as const,
-        marginBottom: "2px",
+        marginBottom: "3px",
+        color: "#000",
       },
       itemDetails: {
         lineHeight: 1.2,
-        color: "#6b7280",
+        color: "#000",
         fontSize: ticketConfig.fontSize.small,
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
       },
       itemPrice: {
         fontSize: ticketConfig.fontSize.small,
-        fontWeight: "bold" as const,
+        color: "#000",
       },
       itemTotal: {
         textAlign: "right" as const,
         minWidth: "fit-content",
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       itemAmount: {
         fontWeight: "bold" as const,
         lineHeight: 1.2,
         fontSize: ticketConfig.fontSize.medium,
-        marginBottom: "2px",
+        marginBottom: "3px",
+        color: "#000",
       },
       discountText: {
         lineHeight: 1.2,
-        color: "#6b7280",
+        color: "#000",
         fontSize: ticketConfig.fontSize.small,
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
       },
       manualAmount: {
-        marginTop: "8px",
+        marginTop: "12px",
         paddingTop: "0",
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       manualAmountRow: {
         display: "flex",
         justifyContent: "space-between",
         lineHeight: 1.2,
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
         fontSize: ticketConfig.fontSize.medium,
-        margin: "4px 0",
+        margin: "6px 0",
+        color: "#000",
       },
       manualAmountText: {
         textTransform: "uppercase" as const,
-        fontWeight: "600",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       paymentMethods: {
-        marginBottom: "8px",
-        marginTop: "8px",
+        marginBottom: "12px",
+        marginTop: "12px",
         paddingTop: "0",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       paymentTitle: {
         textAlign: "center" as const,
-        fontWeight: "600",
+        fontWeight: "bold" as const,
         display: "block",
         lineHeight: 1.3,
         fontSize: ticketConfig.fontSize.medium,
-        margin: "6px 0",
+        margin: "8px 0",
+        color: "#000",
       },
       paymentRow: {
         display: "flex",
@@ -580,47 +676,57 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
         padding: "0",
         lineHeight: 1.3,
         fontSize: ticketConfig.fontSize.medium,
-        fontWeight: "bold" as const,
-        margin: "4px 0",
+        fontWeight: "normal" as const,
+        margin: "6px 0",
+        color: "#000",
       },
       totalSection: {
         paddingTop: "0",
-        marginTop: "8px",
+        marginTop: "40px",
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       totalRow: {
         display: "flex",
         justifyContent: "space-between",
-        fontWeight: "bold",
+        fontWeight: "bold" as const,
         lineHeight: 1.3,
         fontSize: ticketConfig.fontSize.medium,
-        margin: "6px 0",
+        margin: "8px 0",
+        padding: "4px 8px",
+        borderRadius: "4px",
+        color: "#000",
       },
       creditSection: {
         textAlign: "center" as const,
-        fontWeight: "bold",
-        color: "#dc2626",
+        fontWeight: "normal" as const,
+        color: "#000",
         marginBottom: "0",
         paddingTop: "0",
-        marginTop: "8px",
+        marginTop: "12px",
       },
       footer: {
         textAlign: "center" as const,
-        marginTop: "8px",
+        marginTop: "12px",
         paddingTop: "0",
         fontSize: ticketConfig.fontSize.medium,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       footerText: {
-        margin: "6px 0",
+        margin: "8px 0",
         padding: "0",
         lineHeight: 1.3,
-        fontWeight: "bold" as const,
+        fontWeight: "normal" as const,
+        color: "#000",
       },
       smallText: {
         fontSize: ticketConfig.fontSize.xsmall,
-        margin: "4px 0",
+        margin: "6px 0",
         padding: "0",
         lineHeight: 1.2,
         fontWeight: "normal" as const,
+        color: "#000",
       },
     };
 
@@ -709,7 +815,7 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
             <div className="ticket-content" style={styles.ticketContent}>
               {/* Encabezado del negocio */}
               <div style={styles.businessHeader}>
-                <h2 style={styles.businessName}>
+                <h2 className="business-name" style={styles.businessName}>
                   {businessData?.name || "Universal App"}
                 </h2>
                 <p className="business-info" style={styles.businessInfo}>
@@ -726,15 +832,18 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
               {/* Información del ticket */}
               <div style={styles.ticketInfo}>
                 <div style={styles.separator}></div>
-                <p style={styles.ticketNumber}>
+                <p style={styles.itemAmount}>
                   TICKET #{calculatedInvoiceNumber}
                 </p>
-                <p style={styles.ticketDate}>{fecha}</p>
+                <p style={styles.itemAmount}>{fecha}</p>
                 {/* Información del cliente */}
                 {shouldShowCustomerInfo() && (
                   <div style={styles.customerInfo}>
-                    <p style={styles.customerText}>
-                      Cliente: {sale.customerName}
+                    <p style={styles.itemAmount}>
+                      Cliente:{" "}
+                      <span style={styles.customerText}>
+                        {sale.customerName}
+                      </span>
                     </p>
                   </div>
                 )}
@@ -747,10 +856,15 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                   <div key={index} style={styles.item}>
                     <div style={styles.itemRow}>
                       <div style={styles.itemDescription}>
-                        <span style={styles.itemName}>{item.description}</span>
+                        <span className="product-name" style={styles.itemName}>
+                          {item.description}
+                        </span>
                         <div style={styles.itemDetails}>
                           x{item.quantity} {item.unit}{" "}
-                          <span style={styles.itemPrice}>
+                          <span
+                            className="product-price"
+                            style={styles.itemPrice}
+                          >
                             ({formatCurrency(item.price)})
                           </span>
                         </div>
@@ -784,7 +898,9 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
               {/* Formas de pago */}
               {sale.paymentMethods?.length > 0 && !sale.credit && (
                 <div className="payment-methods" style={styles.paymentMethods}>
-                  <span style={styles.paymentTitle}>Formas de pago</span>
+                  <span className="payment-title" style={styles.paymentTitle}>
+                    Formas de pago
+                  </span>
                   {sale.paymentMethods.map((method, idx) => (
                     <div key={idx} style={styles.paymentRow}>
                       <span>{method.method}:</span>
@@ -794,11 +910,10 @@ const PrintableTicket = forwardRef<PrintableTicketHandle, PrintableTicketProps>(
                 </div>
               )}
 
-              {/* Total */}
+              {/* Total - DESTACADO */}
               <div style={styles.totalSection}>
-                <div style={styles.separator}></div>
-
-                <div style={styles.totalRow}>
+                <div style={styles.doubleSeparator}></div>
+                <div className="total-amount" style={styles.totalRow}>
                   <span>TOTAL:</span>
                   <span>{formatCurrency(sale.total)}</span>
                 </div>
