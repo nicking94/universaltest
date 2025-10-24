@@ -64,7 +64,7 @@ export const USERS = [
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_8,
     id: 8,
     isTrial: false,
-    paymentReminderDay: 24,
+    paymentReminderDay: 22, //es 24 en realidad
   },
 ];
 export const PAYMENT_REMINDERS_CONFIG = [
@@ -90,7 +90,7 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
   {
     username: "Electro25",
-    reminderDay: 24,
+    reminderDay: 22, //es 24 en realidad
   },
 ];
 
