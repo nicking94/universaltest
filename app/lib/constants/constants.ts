@@ -51,7 +51,7 @@ export const USERS = [
     isTrial: false,
     paymentReminderDay: 26,
   },
-  //  Cliente 5
+  //  Cliente 3
   {
     username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_7,
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_7,
@@ -59,19 +59,29 @@ export const USERS = [
     isTrial: false,
     paymentReminderDay: 10,
   },
+  //  Cliente 4
   {
     username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_8,
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_8,
     id: 8,
     isTrial: false,
-    paymentReminderDay: 22, //es 24 en realidad
+    paymentReminderDay: 24,
   },
+  //  Cliente 5
+  {
+    username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_8,
+    password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_8,
+    id: 9,
+    isTrial: false,
+    paymentReminderDay: 24,
+  },
+  //  Cliente 6
   {
     username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_9,
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_9,
-    id: 9,
+    id: 10,
     isTrial: false,
-    paymentReminderDay: 22, //es 24 en realidad
+    paymentReminderDay: 24,
   },
 ];
 export const PAYMENT_REMINDERS_CONFIG = [
@@ -97,12 +107,12 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
   {
     username: "Electro25",
-    reminderDay: 22, //es 24 en realidad
+    reminderDay: 24,
   },
   {
     username: "riosjimena256@gmail.com",
-    reminderDay: 22, //es 24 en realidad
+    reminderDay: 24,
   },
 ];
 
-export const APP_VERSION = "1.5.1";
+export const APP_VERSION = "1.5.2";
