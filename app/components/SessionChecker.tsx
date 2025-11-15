@@ -27,17 +27,10 @@ const SessionChecker = () => {
       }
 
       const now = new Date();
-      console.log(`👤 Usuario actual: ${user.username} (ID: ${auth.userId})`);
 
-      // Verificar si el usuario está activo
       const userConfig = USERS.find((u) => u.id === auth.userId);
-      console.log(`🔍 Configuración del usuario:`, userConfig);
 
       if (userConfig && userConfig.isActive === false) {
-        console.log(
-          `🚫 Usuario ${user.username} está inactivo, cerrando sesión...`
-        );
-
         // Limpiar completamente la sesión
         await db.auth.put({
           id: 1,
@@ -45,12 +38,9 @@ const SessionChecker = () => {
           userId: undefined,
         });
 
-        // Forzar recarga para limpiar cualquier estado en memoria
-        router.push("/login?inactive=true");
         return;
       }
 
-      // Resto del código para trial...
       if (user.username === TRIAL_CREDENTIALS.username) {
         console.log("🔍 Verificando periodo de prueba...");
         const trialRecord = await db.trialPeriods
@@ -94,10 +84,8 @@ const SessionChecker = () => {
 
     checkSession();
 
-    // 30 segundos para testing
-    const interval = setInterval(checkSession, 30000);
-
-    console.log("🔄 SessionChecker iniciado - verificando cada 30 segundos");
+    // 1 hora
+    const interval = setInterval(checkSession, 360000);
 
     return () => {
       console.log("🛑 SessionChecker detenido");
