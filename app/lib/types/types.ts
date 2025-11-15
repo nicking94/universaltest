@@ -43,6 +43,7 @@ export type User = {
   username?: string;
   password?: string;
   logo?: string;
+  isActive?: boolean;
 };
 
 export type AuthData = {
@@ -240,7 +241,6 @@ export type ProductCardProps = {
 export type SearchBarProps = {
   onSearch: (query: string) => void;
 };
-// En tus tipos/types.ts
 
 export type Sale = {
   id: number;
