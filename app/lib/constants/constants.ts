@@ -27,7 +27,7 @@ export const USERS = [
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_3,
     id: 3,
     isTrial: false,
-    isActive: false,
+    isActive: true,
     paymentReminderDay: 8,
   },
   //  Cliente 2
