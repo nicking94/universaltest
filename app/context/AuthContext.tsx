@@ -9,7 +9,7 @@ interface User {
   username: string | undefined;
   password: string | undefined;
   isTrial: boolean;
-  isActive?: boolean;
+  isActive?: boolean; // Nueva propiedad
   paymentReminderDay?: number;
 }
 
@@ -18,7 +18,7 @@ interface AuthContextType {
   userId: number | null;
   user: User | null;
   setIsAuthenticated: (authStatus: boolean, userId?: number) => void;
-  logoutUser: (username?: string) => Promise<void>;
+  logoutUser: (username?: string) => Promise<void>; // Nueva función
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -36,10 +36,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userId, setUserId] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
+  // Función para cerrar sesión de un usuario específico
   const logoutUser = async (username?: string) => {
+    // Si se especifica un username, verificar si es el usuario actual
     if (username && user?.username === username) {
       await forceLogout();
     } else if (!username) {
+      // Cerrar sesión del usuario actual
       await forceLogout();
     }
   };
@@ -60,9 +63,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const authData = await db.auth.get(1);
       const authStatus = authData?.isAuthenticated || false;
       const userId = authData?.userId || null;
+
+      // Verificar si el usuario está activo
       if (authStatus && userId) {
         const userFound = USERS.find((u) => u.id === userId);
 
+        // Si el usuario no está activo, forzar cierre de sesión
         if (userFound && userFound.isActive === false) {
           await forceLogout();
           return;
@@ -72,12 +78,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuthenticated(authStatus);
       setUserId(userId);
 
+      // Encontrar el usuario completo basado en el ID
       if (userId) {
         const userFound = USERS.find((u) => u.id === userId);
         if (userFound && userFound.isActive !== false) {
+          // Buscar si hay configuración de recordatorio para este usuario
           const reminderConfig = PAYMENT_REMINDERS_CONFIG.find(
             (config) => config.username === userFound.username
           );
+
+          // Crear usuario con la información de recordatorio
           const userWithReminder = {
             ...userFound,
             paymentReminderDay: reminderConfig?.reminderDay,

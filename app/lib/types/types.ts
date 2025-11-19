@@ -90,18 +90,15 @@ export type NavbarProps = {
   handleTheme: () => void;
   handleCloseSession: () => void;
 };
-export type SidebarProps = {
-  items?: Array<{
-    label: string;
-    href: string;
-    icon?: React.ReactNode;
-    target?: string;
-  }>;
-};
+export interface SidebarProps {
+  items?: MenuItemProps[];
+}
 export type MenuItemProps = {
   label: string;
-  href: string;
+  href?: string;
   icon?: React.ReactNode;
+  target?: string;
+  submenu?: MenuItemProps[];
 };
 export type SidebarContextProps = {
   isSidebarOpen: boolean;
@@ -241,6 +238,7 @@ export type ProductCardProps = {
 export type SearchBarProps = {
   onSearch: (query: string) => void;
 };
+// En tus tipos/types.ts
 
 export type Sale = {
   id: number;
@@ -266,6 +264,7 @@ export type Sale = {
     date: string;
   };
   concept?: string;
+  appliedPromotion?: Promotion;
 };
 
 export type SaleItem = {
@@ -624,6 +623,7 @@ export type UserPreferences = {
   acceptedTerms: boolean;
   acceptedTermsDate?: string;
   itemsPerPage?: number;
+  appVersion?: string;
 };
 export type DailyData = {
   date: string;
@@ -702,3 +702,22 @@ export interface Expense {
   type: "INGRESO" | "EGRESO" | "TODOS";
   combinedPaymentMethods?: PaymentSplit[];
 }
+
+export type PromotionType = "PERCENTAGE_DISCOUNT" | "FIXED_DISCOUNT";
+
+export type PromotionStatus = "active" | "inactive";
+
+export type Promotion = {
+  id?: number;
+  name: string;
+  description: string;
+  type: PromotionType;
+  status: PromotionStatus;
+  discount: number;
+  rubro: string;
+  startDate: string;
+  endDate?: string;
+  minPurchaseAmount?: number;
+  createdAt: string;
+  updatedAt: string;
+};

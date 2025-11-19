@@ -45,7 +45,7 @@ export default function RootLayout({
                   </div>
                   <div className="md:hidden fixed inset-0 bg-white flex items-center justify-center p-4">
                     <p className="text-center text-blue_b text-lg font-semibold">
-                      Aplicación no disponible en dispositivos moviles
+                      Próximamente disponible en dispositivos moviles
                     </p>
                   </div>
                 </body>

@@ -11,10 +11,11 @@ import {
   Payment,
   PaymentSplit,
   Product,
+  Promotion,
   Sale,
   UnitOption,
 } from "@/app/lib/types/types";
-import { Plus, Printer, ShoppingCart, Trash } from "lucide-react";
+import { Plus, Printer, ShoppingCart, Trash, Tag, Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/app/database/db";
 import { parseISO, format } from "date-fns";
@@ -36,6 +37,14 @@ import PrintableTicket, {
 } from "@/app/components/PrintableTicket";
 import { useBusinessData } from "@/app/context/BusinessDataContext";
 import { usePagination } from "@/app/context/PaginationContext";
+import {
+  convertToBaseUnit,
+  convertFromBaseUnit,
+  calculatePrice,
+  calculateCombinedTotal,
+  calculateTotalProfit,
+  checkStockAvailability,
+} from "@/app/lib/utils/calculations";
 
 type SelectOption = {
   value: number;
@@ -43,6 +52,7 @@ type SelectOption = {
   product: Product;
   isDisabled: boolean;
 };
+
 const VentasPage = () => {
   const { businessData } = useBusinessData();
   const { rubro } = useRubro();
@@ -88,6 +98,14 @@ const VentasPage = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [shouldRedirectToCash, setShouldRedirectToCash] = useState(false);
   const [registerCheck, setRegisterCheck] = useState(false);
+  const [availablePromotions, setAvailablePromotions] = useState<Promotion[]>(
+    []
+  );
+  const [selectedPromotions, setSelectedPromotions] =
+    useState<Promotion | null>(null);
+  const [temporarySelectedPromotion, setTemporarySelectedPromotion] =
+    useState<Promotion | null>(null);
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
 
   const CONVERSION_FACTORS = {
     Gr: { base: "Kg", factor: 0.001 },
@@ -134,6 +152,7 @@ const VentasPage = () => {
     { value: "W", label: "Watt", convertible: false },
     { value: "A", label: "Amperio", convertible: false },
   ];
+
   const getCompatibleUnits = (productUnit: string): UnitOption[] => {
     const productUnitInfo =
       CONVERSION_FACTORS[productUnit as keyof typeof CONVERSION_FACTORS];
@@ -147,107 +166,454 @@ const VentasPage = () => {
     });
   };
 
-  const convertToBaseUnit = useCallback(
-    (quantity: number, fromUnit: string): number => {
-      const unitInfo =
-        CONVERSION_FACTORS[fromUnit as keyof typeof CONVERSION_FACTORS];
-      return unitInfo ? quantity * unitInfo.factor : quantity;
-    },
-    []
-  );
-
-  const convertFromBaseUnit = useCallback(
-    (quantity: number, toUnit: string): number => {
-      const unitInfo =
-        CONVERSION_FACTORS[toUnit as keyof typeof CONVERSION_FACTORS];
-      return unitInfo ? quantity / unitInfo.factor : quantity;
-    },
-    []
-  );
-
-  const convertUnit = useCallback(
-    (quantity: number, fromUnit: string, toUnit: string): number => {
-      if (fromUnit === toUnit) return quantity;
-      const baseQuantity = convertToBaseUnit(quantity, fromUnit);
-      return convertFromBaseUnit(baseQuantity, toUnit);
-    },
-    [convertToBaseUnit, convertFromBaseUnit]
-  );
-  const calculatePrice = useCallback(
-    (product: Product, quantity: number, unit: string) => {
-      try {
-        const quantityInProductUnit = convertUnit(quantity, unit, product.unit);
-        const costPrice = product.costPrice || 0;
-
-        // Precio sin descuentos/recargos
-        const priceWithoutModifiers = product.price * quantityInProductUnit;
-
-        // Aplicar descuento
-        const discount = product.discount || 0;
-        const discountAmount = (priceWithoutModifiers * discount) / 100;
-        const priceAfterDiscount = priceWithoutModifiers - discountAmount;
-
-        // Aplicar recargo
-        const surcharge = product.surcharge || 0;
-        const surchargeAmount = (priceAfterDiscount * surcharge) / 100;
-        const finalPrice = priceAfterDiscount + surchargeAmount;
-
-        // Calcular ganancia (precio final - costo)
-        const totalCost = costPrice * quantityInProductUnit;
-        const profit = finalPrice - totalCost;
-
-        return {
-          finalPrice: parseFloat(finalPrice.toFixed(2)),
-          profit: parseFloat(profit.toFixed(2)),
-          quantityInProductUnit,
-        };
-      } catch (error) {
-        console.error("Error calculating price and profit:", error);
-        return { finalPrice: 0, profit: 0, quantityInProductUnit: 0 };
-      }
-    },
-    [convertUnit]
-  );
-
-  const calculateTotal = (
+  // ✅ FUNCIÓN MEJORADA: Calcular total final considerando promociones
+  const calculateFinalTotal = (
     products: Product[],
-    manualAmount: number = 0
+    manualAmount: number = 0,
+    promotion?: Promotion | null
   ): number => {
-    const productsTotal = products.reduce(
-      (sum, p) => sum + calculatePrice(p, p.quantity, p.unit).finalPrice,
+    const subtotal = calculateCombinedTotal(products) + manualAmount;
+
+    if (!promotion) return subtotal;
+
+    let discount = 0;
+    if (promotion.type === "PERCENTAGE_DISCOUNT") {
+      discount = (subtotal * promotion.discount) / 100;
+    } else if (promotion.type === "FIXED_DISCOUNT") {
+      discount = promotion.discount;
+    }
+
+    return Math.max(0, subtotal - Math.min(discount, subtotal));
+  };
+
+  // ✅ FUNCIÓN MEJORADA: Validar stock para la venta
+  const validateStockForSale = (
+    saleProducts: Product[]
+  ): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    for (const product of saleProducts) {
+      const originalProduct = products.find((p) => p.id === product.id);
+      if (!originalProduct) {
+        errors.push(`Producto ${product.name} no encontrado`);
+        continue;
+      }
+
+      const stockCheck = checkStockAvailability(
+        originalProduct,
+        product.quantity,
+        product.unit
+      );
+
+      if (!stockCheck.available) {
+        errors.push(
+          `Stock insuficiente para ${product.name}. ` +
+            `Solicitado: ${product.quantity} ${product.unit}, ` +
+            `Disponible: ${stockCheck.availableQuantity.toFixed(2)} ${
+              stockCheck.availableUnit
+            }`
+        );
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  };
+
+  // ✅ FUNCIÓN MEJORADA: Sincronizar métodos de pago
+  const synchronizePaymentMethods = (
+    paymentMethods: PaymentSplit[],
+    total: number
+  ): PaymentSplit[] => {
+    const currentTotal = paymentMethods.reduce(
+      (sum, method) => sum + method.amount,
       0
     );
 
-    return parseFloat((productsTotal + manualAmount).toFixed(2));
+    if (Math.abs(currentTotal - total) < 0.01) {
+      return paymentMethods; // Ya están sincronizados
+    }
+
+    if (paymentMethods.length === 1) {
+      // Un solo método: asignar el total completo
+      return [{ ...paymentMethods[0], amount: total }];
+    } else {
+      // Múltiples métodos: distribuir proporcionalmente
+      const ratio = total / currentTotal;
+      return paymentMethods.map((method) => ({
+        ...method,
+        amount: parseFloat((method.amount * ratio).toFixed(2)),
+      }));
+    }
   };
 
-  const calculateCombinedTotal = useCallback(
-    (products: Product[]) => {
-      return products.reduce(
-        (sum, p) => sum + calculatePrice(p, p.quantity, p.unit).finalPrice,
-        0
-      );
+  const applyPromotionsToProducts = useCallback(
+    (promotionToApply: Promotion) => {
+      setNewSale((prev) => {
+        // Calcular el subtotal actual
+        const currentSubtotal =
+          calculateCombinedTotal(prev.products) + (prev.manualAmount || 0);
+
+        // Verificar monto mínimo de compra si está configurado
+        if (
+          promotionToApply.minPurchaseAmount &&
+          promotionToApply.minPurchaseAmount > 0
+        ) {
+          if (currentSubtotal < promotionToApply.minPurchaseAmount) {
+            showNotification(
+              `Esta promoción requiere un monto mínimo de ${formatCurrency(
+                promotionToApply.minPurchaseAmount
+              )}. Subtotal actual: ${formatCurrency(currentSubtotal)}`,
+              "error"
+            );
+            return prev;
+          }
+        }
+
+        // Verificar vigencia de la promoción
+        const now = new Date();
+        const startDate = new Date(promotionToApply.startDate);
+        const endDate = promotionToApply.endDate
+          ? new Date(promotionToApply.endDate)
+          : null;
+
+        if (now < startDate) {
+          showNotification(
+            `Esta promoción estará disponible a partir del ${startDate.toLocaleDateString()}`,
+            "error"
+          );
+          return prev;
+        }
+
+        if (endDate && now > endDate) {
+          showNotification(
+            `Esta promoción expiró el ${endDate.toLocaleDateString()}`,
+            "error"
+          );
+          return prev;
+        }
+
+        if (promotionToApply.status === "inactive") {
+          showNotification("Esta promoción no está activa", "error");
+          return prev;
+        }
+
+        // Calcular el monto del descuento
+        let discountAmount = 0;
+        if (promotionToApply.type === "PERCENTAGE_DISCOUNT") {
+          discountAmount = (currentSubtotal * promotionToApply.discount) / 100;
+        } else if (promotionToApply.type === "FIXED_DISCOUNT") {
+          discountAmount = promotionToApply.discount;
+        }
+
+        discountAmount = Math.min(discountAmount, currentSubtotal);
+        const newTotal = Math.max(0, currentSubtotal - discountAmount);
+
+        // ✅ CORREGIDO: Recalcular métodos de pago con el nuevo total
+        const updatedPaymentMethods = synchronizePaymentMethods(
+          prev.paymentMethods,
+          newTotal
+        );
+
+        showNotification(`Promoción aplicada correctamente`, "success");
+
+        return {
+          ...prev,
+          total: newTotal,
+          paymentMethods: updatedPaymentMethods,
+          appliedPromotion: promotionToApply,
+        };
+      });
     },
-    [calculatePrice]
+    []
   );
 
-  const calculateTotalProfit = useCallback(
-    (
-      products: Product[],
-      manualAmount: number = 0,
-      manualProfitPercentage: number = 0
-    ) => {
-      const productsProfit = products.reduce(
-        (sum, p) => sum + calculatePrice(p, p.quantity, p.unit).profit,
-        0
+  const removePromotion = () => {
+    setNewSale((prevSale) => {
+      const currentSubtotal =
+        calculateCombinedTotal(prevSale.products) +
+        (prevSale.manualAmount || 0);
+
+      // ✅ CORREGIDO: Recalcular métodos de pago al remover la promoción
+      const updatedPaymentMethods = synchronizePaymentMethods(
+        prevSale.paymentMethods,
+        currentSubtotal
       );
 
-      const manualProfit = (manualAmount * manualProfitPercentage) / 100;
+      return {
+        ...prevSale,
+        total: currentSubtotal,
+        paymentMethods: updatedPaymentMethods,
+        appliedPromotion: undefined,
+      };
+    });
+    setSelectedPromotions(null);
+    showNotification("Promoción removida", "info");
+  };
 
-      return parseFloat((productsProfit + manualProfit).toFixed(2));
-    },
-    [calculatePrice]
-  );
+  const handlePromotionSelect = (promotion: Promotion) => {
+    setTemporarySelectedPromotion((prev) => {
+      // Si ya está seleccionada, deseleccionar
+      if (prev?.id === promotion.id) {
+        return null;
+      }
+      return promotion;
+    });
+  };
+
+  const SelectedPromotionsBadge = () => {
+    if (!selectedPromotions) return null;
+
+    const currentSubtotal =
+      calculateCombinedTotal(newSale.products) + (newSale.manualAmount || 0);
+    const meetsRequirements =
+      !selectedPromotions.minPurchaseAmount ||
+      currentSubtotal >= selectedPromotions.minPurchaseAmount;
+
+    // Verificar vigencia
+    const now = new Date();
+    const startDate = new Date(selectedPromotions.startDate);
+    const endDate = selectedPromotions.endDate
+      ? new Date(selectedPromotions.endDate)
+      : null;
+    const isActive = selectedPromotions.status === "active";
+    const isInDateRange = now >= startDate && (!endDate || now <= endDate);
+
+    const isValid = meetsRequirements && isActive && isInDateRange;
+
+    return (
+      <div className="flex items-center gap-4 p-2">
+        <div className="w-full flex items-center justify-end gap-4">
+          <span className="text-xs font-semibold text-gray_b">
+            Promoción aplicada:
+          </span>
+          <div
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+              isValid ? "bg-green_xl text-green_b" : "bg-red_xl text-red_b"
+            }`}
+          >
+            <Tag size={12} />
+            <span>{selectedPromotions.name}</span>
+            {!isValid && (
+              <span className="ml-1 text-xs">
+                {!meetsRequirements &&
+                  `(Requiere: ${formatCurrency(
+                    selectedPromotions.minPurchaseAmount || 0
+                  )})`}
+                {!isActive && "(Inactiva)"}
+                {!isInDateRange && "(Fuera de vigencia)"}
+              </span>
+            )}
+            <button
+              onClick={removePromotion}
+              className="cursor-pointer ml-1 hover:text-green_b transition-colors"
+              title="Remover promoción"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const PromotionSelectionModal = () => {
+    const handleCloseModal = () => {
+      setIsPromotionModalOpen(false);
+      setTemporarySelectedPromotion(null);
+    };
+
+    const handleApplyPromotion = () => {
+      if (!temporarySelectedPromotion) {
+        showNotification("Por favor selecciona una promoción", "error");
+        return;
+      }
+
+      // Verificar si ya hay una promoción aplicada
+      if (selectedPromotions) {
+        showNotification(
+          "Ya hay una promoción aplicada. Remueve la actual para aplicar una nueva.",
+          "error"
+        );
+        return;
+      }
+
+      setSelectedPromotions(temporarySelectedPromotion);
+      applyPromotionsToProducts(temporarySelectedPromotion);
+      setIsPromotionModalOpen(false);
+    };
+
+    // Función para verificar si una promoción es aplicable
+    const isPromotionApplicable = (promotion: Promotion) => {
+      const currentSubtotal =
+        calculateCombinedTotal(newSale.products) + (newSale.manualAmount || 0);
+      const now = new Date();
+      const startDate = new Date(promotion.startDate);
+      const endDate = promotion.endDate ? new Date(promotion.endDate) : null;
+
+      // Verificar monto mínimo
+      if (promotion.minPurchaseAmount && promotion.minPurchaseAmount > 0) {
+        if (currentSubtotal < promotion.minPurchaseAmount) {
+          return false;
+        }
+      }
+
+      // Verificar vigencia
+      if (now < startDate) return false;
+      if (endDate && now > endDate) return false;
+
+      // Verificar estado
+      if (promotion.status !== "active") return false;
+
+      return true;
+    };
+
+    // Función para renderizar la información de la promoción condicionalmente
+    const renderPromotionInfo = (promotion: Promotion) => {
+      const infoItems = [];
+
+      // Solo mostrar monto mínimo si está definido y mayor a 0
+      if (promotion.minPurchaseAmount && promotion.minPurchaseAmount > 0) {
+        infoItems.push(
+          <p key="minPurchase" className="text-gray_l dark:text-gray_xxl"></p>
+        );
+      }
+
+      if (infoItems.length === 0) {
+        return null;
+      }
+
+      return (
+        <div className="mt-2 text-xs text-gray_m space-y-1">{infoItems}</div>
+      );
+    };
+
+    return (
+      <Modal
+        isOpen={isPromotionModalOpen}
+        onClose={handleCloseModal}
+        title="Seleccionar Promoción"
+        buttons={
+          <div className="flex justify-end space-x-4">
+            <Button
+              title="Aplicar promoción"
+              text="Aplicar"
+              colorText="text-white"
+              colorTextHover="text-white"
+              onClick={handleApplyPromotion}
+              disabled={!temporarySelectedPromotion}
+            />
+            <Button
+              title="Cancelar"
+              text="Cancelar"
+              colorText="text-gray_b dark:text-white"
+              colorTextHover="hover:dark:text-white"
+              colorBg="bg-transparent dark:bg-gray_m"
+              colorBgHover="hover:bg-blue_xl hover:dark:bg-gray_l"
+              onClick={handleCloseModal}
+            />
+          </div>
+        }
+      >
+        <div className="max-h-96 overflow-y-auto">
+          <div className="grid gap-3">
+            {availablePromotions.length > 0 ? (
+              availablePromotions.map((promotion) => {
+                const isApplicable = isPromotionApplicable(promotion);
+                const currentSubtotal =
+                  calculateCombinedTotal(newSale.products) +
+                  (newSale.manualAmount || 0);
+
+                return (
+                  <div
+                    key={promotion.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      temporarySelectedPromotion?.id === promotion.id
+                        ? "border-blue_m bg-blue_xl dark:bg-gray_l"
+                        : isApplicable
+                        ? "bg-white dark:bg-gray_m hover:bg-blue_xl hover:dark:bg-gray_l border-gray_xl"
+                        : "opacity-70 bg-gray_xl dark:bg-gray_m border-gray_l cursor-not-allowed"
+                    }`}
+                    onClick={() =>
+                      isApplicable && handlePromotionSelect(promotion)
+                    }
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 ">
+                        <div className="flex items-center gap-2 ">
+                          <h3
+                            className={`uppercase font-semibold text-gray_b dark:text-white text-md`}
+                          >
+                            {promotion.name}
+                          </h3>
+                          <span
+                            className={`min-w-10 px-2 py-1 rounded-full text-sm font-semibold ${
+                              promotion.type === "PERCENTAGE_DISCOUNT"
+                                ? "bg-green_xl text-green_b"
+                                : "bg-blue_m text-white"
+                            }`}
+                          >
+                            {promotion.type === "PERCENTAGE_DISCOUNT"
+                              ? `${promotion.discount}%`
+                              : `$${promotion.discount}`}
+                          </span>
+                          {!isApplicable && (
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red_xl text-red_b">
+                              No aplicable
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray_m dark:text-gray_xxl mt-1">
+                          {promotion.description}
+                        </p>
+
+                        {renderPromotionInfo(promotion)}
+                        {!isApplicable &&
+                          promotion.minPurchaseAmount &&
+                          promotion.minPurchaseAmount > 0 && (
+                            <p className="text-xs text-red_m mt-1">
+                              Requiere{" "}
+                              {formatCurrency(promotion.minPurchaseAmount)}{" "}
+                              (actual: {formatCurrency(currentSubtotal)})
+                            </p>
+                          )}
+                      </div>
+                      <div className="flex items-center">
+                        {temporarySelectedPromotion?.id === promotion.id ? (
+                          <Check
+                            size={20}
+                            className="text-blue_b dark:text-white border-2 rounded border-blue_b dark:border-gray_xl"
+                          />
+                        ) : (
+                          <div
+                            className={`w-5 h-5 border-2 rounded ${
+                              isApplicable
+                                ? "border-blue_m dark:border-gray_xl"
+                                : "border-gray_l"
+                            }`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-gray_m dark:text-gray_xl">
+                <Tag size={48} className="mx-auto mb-3 text-gray_xl" />
+                <p>No hay promociones disponibles</p>
+                <p className="text-sm">
+                  Crea promociones en la sección correspondiente
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
+    );
+  };
 
   const checkSalesLimit = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -256,56 +622,7 @@ const VentasPage = () => {
       .count();
     return salesCount >= 30;
   };
-  const checkStockAvailability = (
-    product: Product,
-    requestedQuantity: number,
-    requestedUnit: string
-  ): {
-    available: boolean;
-    availableQuantity: number;
-    availableUnit: string;
-  } => {
-    try {
-      const stockInBase = convertToBaseUnit(
-        Number(product.stock),
-        product.unit
-      );
-      const requestedInBase = convertToBaseUnit(
-        requestedQuantity,
-        requestedUnit
-      );
 
-      if (stockInBase >= requestedInBase) {
-        return {
-          available: true,
-          availableQuantity: requestedQuantity,
-          availableUnit: requestedUnit,
-        };
-      } else {
-        const availableInRequestedUnit = convertFromBaseUnit(
-          stockInBase,
-          requestedUnit
-        );
-
-        return {
-          available: false,
-          availableQuantity: parseFloat(availableInRequestedUnit.toFixed(3)),
-          availableUnit: requestedUnit,
-        };
-      }
-    } catch (error) {
-      console.error("Error checking stock:", error);
-      return {
-        available: false,
-        availableQuantity: 0,
-        availableUnit: requestedUnit,
-      };
-    }
-  };
-  const checkCashStatus = async () => {
-    const { needsRedirect } = await ensureCashIsOpen();
-    return needsRedirect;
-  };
   const updateStockAfterSale = (
     productId: number,
     soldQuantity: number,
@@ -324,6 +641,7 @@ const VentasPage = () => {
           }`
       );
     }
+
     const soldInBase = convertToBaseUnit(soldQuantity, unit);
     const currentStockInBase = convertToBaseUnit(
       Number(product.stock),
@@ -333,11 +651,6 @@ const VentasPage = () => {
     const newStock = convertFromBaseUnit(newStockInBase, product.unit);
 
     return parseFloat(newStock.toFixed(3));
-  };
-
-  const convertToUnit = (quantity: number, unit: string): number => {
-    const factor = CONVERSION_FACTORS[unit as keyof typeof CONVERSION_FACTORS];
-    return factor ? quantity * factor.factor : quantity;
   };
 
   const productOptions = useMemo(() => {
@@ -366,10 +679,12 @@ const VentasPage = () => {
     value: i + 1,
     label: format(new Date(2022, i), "MMMM", { locale: es }),
   }));
+
   const yearOptions = Array.from({ length: 10 }, (_, i) => {
     const year = currentYear - i;
     return { value: year, label: String(year) };
   });
+
   const paymentOptions = [
     { value: "EFECTIVO", label: "Efectivo" },
     { value: "TRANSFERENCIA", label: "Transferencia" },
@@ -398,6 +713,7 @@ const VentasPage = () => {
       return matchesMonth && matchesYear && matchesRubro;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   const showNotification = (
     message: string,
     type: "success" | "error" | "info"
@@ -410,6 +726,7 @@ const VentasPage = () => {
       setIsNotificationOpen(false);
     }, 2500);
   };
+
   const addIncomeToDailyCash = async (sale: Sale) => {
     try {
       const today = getLocalDateString();
@@ -512,6 +829,7 @@ const VentasPage = () => {
       }));
     }
   };
+
   const handleProductScan = (productId: number) => {
     setNewSale((prevState) => {
       const existingProductIndex = prevState.products.findIndex(
@@ -526,9 +844,10 @@ const VentasPage = () => {
           ...existingProduct,
           quantity: existingProduct.quantity + 1,
         };
-        const newTotal = updatedProducts.reduce(
-          (sum, p) => sum + calculatePrice(p, p.quantity, p.unit).finalPrice,
-          0
+        const newTotal = calculateFinalTotal(
+          updatedProducts,
+          prevState.manualAmount || 0,
+          selectedPromotions
         );
 
         return {
@@ -548,9 +867,10 @@ const VentasPage = () => {
         };
 
         const updatedProducts = [...prevState.products, newProduct];
-        const newTotal = updatedProducts.reduce(
-          (sum, p) => sum + calculatePrice(p, p.quantity, p.unit).finalPrice,
-          0
+        const newTotal = calculateFinalTotal(
+          updatedProducts,
+          prevState.manualAmount || 0,
+          selectedPromotions
         );
 
         return {
@@ -576,21 +896,27 @@ const VentasPage = () => {
 
   const handleManualAmountChange = (value: number) => {
     setNewSale((prev) => {
-      const productsTotal = calculateCombinedTotal(prev.products);
-      const newTotal = productsTotal + value;
-      const updatedMethods = [...prev.paymentMethods];
-      if (updatedMethods.length === 1) {
-        updatedMethods[0].amount = newTotal;
-      }
+      const newTotal = calculateFinalTotal(
+        prev.products,
+        value,
+        selectedPromotions
+      );
+
+      // ✅ CORREGIDO: Usar synchronizePaymentMethods
+      const updatedPaymentMethods = synchronizePaymentMethods(
+        prev.paymentMethods,
+        newTotal
+      );
 
       return {
         ...prev,
         manualAmount: value,
         total: newTotal,
-        paymentMethods: updatedMethods,
+        paymentMethods: updatedPaymentMethods,
       };
     });
   };
+
   const handleCreditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isCredit = e.target.checked;
     setIsCredit(isCredit);
@@ -609,6 +935,7 @@ const VentasPage = () => {
   ) => {
     setSelectedYear(selectedOption ? selectedOption.value : currentYear);
   };
+
   const handleYearInputChange = (inputValue: string) => {
     const parsedYear = parseInt(inputValue, 10);
 
@@ -616,6 +943,7 @@ const VentasPage = () => {
       setSelectedYear(parsedYear);
     }
   };
+
   const handlePaymentMethodChange = (
     index: number,
     field: keyof PaymentSplit,
@@ -681,9 +1009,12 @@ const VentasPage = () => {
     setNewSale((prev) => {
       if (prev.paymentMethods.length >= paymentOptions.length) return prev;
 
-      const productsTotal = calculateCombinedTotal(prev.products || []);
-      const manualAmount = prev.manualAmount || 0;
-      const total = productsTotal + manualAmount;
+      const total = calculateFinalTotal(
+        prev.products,
+        prev.manualAmount || 0,
+        selectedPromotions
+      );
+
       if (prev.paymentMethods.length < 2) {
         const newMethodCount = prev.paymentMethods.length + 1;
         const share = total / newMethodCount;
@@ -733,9 +1064,11 @@ const VentasPage = () => {
       const updatedMethods = [...prev.paymentMethods];
       updatedMethods.splice(index, 1);
 
-      const productsTotal = calculateCombinedTotal(prev.products || []);
-      const manualAmount = prev.manualAmount || 0;
-      const total = productsTotal + manualAmount;
+      const total = calculateFinalTotal(
+        prev.products,
+        prev.manualAmount || 0,
+        selectedPromotions
+      );
 
       if (updatedMethods.length === 1) {
         updatedMethods[0].amount = total;
@@ -755,29 +1088,31 @@ const VentasPage = () => {
       };
     });
   };
+
   const handleAddSale = async () => {
-    const needsRedirect = await checkCashStatus();
-
-    if (needsRedirect) {
+    const needsRedirect = await ensureCashIsOpen();
+    if (needsRedirect.needsRedirect) {
       setShouldRedirectToCash(true);
-
       return;
     }
     setIsOpenModal(true);
   };
+
   const validatePaymentMethods = (
     paymentMethods: PaymentSplit[],
-    total: number,
-    isCredit: boolean
-  ): boolean => {
-    if (isCredit) {
-      const sum = paymentMethods.reduce(
-        (acc, method) => acc + method.amount,
-        0
-      );
-      return Math.abs(sum - total) < 0.01;
+    total: number
+  ): { isValid: boolean; message?: string } => {
+    const sum = paymentMethods.reduce((acc, method) => acc + method.amount, 0);
+    const difference = Math.abs(sum - total);
+
+    if (difference > 0.01) {
+      return {
+        isValid: false,
+        message: `La suma de los métodos de pago no coinciden.`,
+      };
     }
-    return true;
+
+    return { isValid: true };
   };
 
   const handleConfirmAddSale = async () => {
@@ -792,19 +1127,8 @@ const VentasPage = () => {
         return;
       }
     }
-
-    if (
-      !validatePaymentMethods(newSale.paymentMethods, newSale.total, isCredit)
-    ) {
-      showNotification(
-        "La suma de los métodos de pago no coincide con el total",
-        "error"
-      );
-      return;
-    }
-
-    const needsRedirect = await checkCashStatus();
-    if (needsRedirect) {
+    const needsRedirect = await ensureCashIsOpen();
+    if (needsRedirect.needsRedirect) {
       setShouldRedirectToCash(true);
       showNotification(
         "Debes abrir la caja primero para realizar ventas",
@@ -813,15 +1137,49 @@ const VentasPage = () => {
       return;
     }
 
-    const totalPaymentMethods = newSale.paymentMethods.reduce(
-      (sum, method) => sum + method.amount,
-      0
-    );
-    const calculatedTotal =
-      calculateCombinedTotal(newSale.products) + (newSale.manualAmount || 0);
+    // ✅ VALIDACIÓN MEJORADA: Validar stock antes de procesar
+    const stockValidation = validateStockForSale(newSale.products);
+    if (!stockValidation.isValid) {
+      stockValidation.errors.forEach((error) =>
+        showNotification(error, "error")
+      );
+      return;
+    }
 
-    if (Math.abs(totalPaymentMethods - calculatedTotal) > 0.01) {
-      showNotification(`La suma de los métodos de pago no coinciden`, "error");
+    if (!validatePaymentMethods(newSale.paymentMethods, newSale.total)) {
+      showNotification(
+        "La suma de los métodos de pago no coincide con el total",
+        "error"
+      );
+      return;
+    }
+
+    const paymentValidation = validatePaymentMethods(
+      newSale.paymentMethods,
+      newSale.total
+    );
+    if (!paymentValidation.isValid) {
+      showNotification(
+        paymentValidation.message || "Error en métodos de pago",
+        "error"
+      );
+      return;
+    }
+
+    // ✅ VALIDACIÓN MEJORADA: Calcular el total esperado considerando la promoción
+    const expectedTotal = calculateFinalTotal(
+      newSale.products,
+      newSale.manualAmount || 0,
+      selectedPromotions
+    );
+
+    if (Math.abs(newSale.total - expectedTotal) > 0.01) {
+      showNotification(
+        `Error de cálculo: El total no coincide. Esperado: $${expectedTotal.toFixed(
+          2
+        )}, Actual: $${newSale.total.toFixed(2)}`,
+        "error"
+      );
       return;
     }
 
@@ -852,7 +1210,78 @@ const VentasPage = () => {
       }
     }
 
+    // ✅ NUEVA VALIDACIÓN: Verificar que si hay promoción aplicada, cumpla con los requisitos
+    if (selectedPromotions) {
+      const currentSubtotal =
+        calculateCombinedTotal(newSale.products) + (newSale.manualAmount || 0);
+
+      // Validar monto mínimo
+      if (
+        selectedPromotions.minPurchaseAmount &&
+        selectedPromotions.minPurchaseAmount > 0
+      ) {
+        if (currentSubtotal < selectedPromotions.minPurchaseAmount) {
+          showNotification(
+            `No se puede procesar la venta. La promoción "${
+              selectedPromotions.name
+            }" requiere un monto mínimo de ${formatCurrency(
+              selectedPromotions.minPurchaseAmount
+            )}`,
+            "error"
+          );
+          return;
+        }
+      }
+
+      // Verificar vigencia al momento de la venta
+      const now = new Date();
+      const startDate = new Date(selectedPromotions.startDate);
+      const endDate = selectedPromotions.endDate
+        ? new Date(selectedPromotions.endDate)
+        : null;
+
+      if (now < startDate) {
+        showNotification(
+          `La promoción "${
+            selectedPromotions.name
+          }" no está vigente aún. Estará disponible a partir del ${startDate.toLocaleDateString()}`,
+          "error"
+        );
+        return;
+      }
+
+      if (endDate && now > endDate) {
+        showNotification(
+          `La promoción "${
+            selectedPromotions.name
+          }" ha expirado el ${endDate.toLocaleDateString()}`,
+          "error"
+        );
+        return;
+      }
+
+      if (selectedPromotions.status === "inactive") {
+        showNotification(
+          `La promoción "${selectedPromotions.name}" no está activa`,
+          "error"
+        );
+        return;
+      }
+    }
+
+    // ✅ MEJORA: Guardar stocks originales para rollback
+    const originalStocks: { [key: number]: number } = {};
+
     try {
+      // Guardar stocks originales
+      for (const product of newSale.products) {
+        const originalProduct = products.find((p) => p.id === product.id);
+        if (originalProduct) {
+          originalStocks[product.id] = originalProduct.stock;
+        }
+      }
+
+      // Actualizar stocks
       for (const product of newSale.products) {
         const updatedStock = updateStockAfterSale(
           product.id,
@@ -930,13 +1359,14 @@ const VentasPage = () => {
         customerId: customerId || "",
         paid: !isCredit,
         concept: newSale.concept || "",
+        appliedPromotion: selectedPromotions || undefined, // Incluir la promoción aplicada
       };
 
       if (!isCredit) {
         await addIncomeToDailyCash(saleToSave);
         setSelectedSale(saleToSave);
         setIsInfoModalOpen(true);
-        //desactivado temporalmente
+        // Desactivado temporalmente
         setTimeout(() => {
           if (ticketRef.current) {
             ticketRef.current.print().catch((error) => {
@@ -958,6 +1388,22 @@ const VentasPage = () => {
       await db.sales.add(saleToSave);
       setSales([...sales, saleToSave]);
 
+      // ✅ ACTUALIZAR CONTADOR DE USOS DE LA PROMOCIÓN
+      if (selectedPromotions && selectedPromotions.id) {
+        await db.promotions.update(selectedPromotions.id, {
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Actualizar la lista de promociones disponibles
+        const updatedPromotions = await db.promotions.toArray();
+        const activePromotions = updatedPromotions.filter(
+          (p) =>
+            p.status === "active" &&
+            (p.rubro === rubro || p.rubro === "Todos los rubros")
+        );
+        setAvailablePromotions(activePromotions);
+      }
+
       // Si la venta tiene un cliente asociado (no es "CLIENTE OCASIONAL"), actualizar el historial del cliente
       if (customerId && finalCustomerName !== "CLIENTE OCASIONAL") {
         await updateCustomerPurchaseHistory(customerId, saleToSave);
@@ -977,12 +1423,28 @@ const VentasPage = () => {
         };
         await db.payments.add(chequePayment);
       }
+
+      showNotification("Venta registrada correctamente", "success");
     } catch (error) {
       console.error("Error al agregar venta:", error);
+
+      // ✅ MEJORA: Revertir stocks en caso de error
+      try {
+        for (const [productId, originalStock] of Object.entries(
+          originalStocks
+        )) {
+          await db.products.update(Number(productId), { stock: originalStock });
+        }
+        console.log("Stocks revertidos exitosamente después del error");
+      } catch (rollbackError) {
+        console.error("Error al revertir stocks:", rollbackError);
+      }
+
       showNotification("Error al agregar venta", "error");
     }
     handleCloseModal();
   };
+
   const updateCustomerPurchaseHistory = async (
     customerId: string,
     sale: Sale
@@ -1022,12 +1484,242 @@ const VentasPage = () => {
     setSelectedCustomer(null);
     setCustomerName("");
     setCustomerPhone("");
+    setSelectedPromotions(null);
+    setTemporarySelectedPromotion(null);
     setIsOpenModal(false);
   };
+
   const handleCloseInfoModal = () => {
     setIsInfoModalOpen(false);
     setSelectedSale(null);
   };
+
+  const handleProductSelect = (
+    selectedOptions: readonly {
+      value: number;
+      label: string;
+      isDisabled?: boolean;
+      product?: Product;
+    }[]
+  ) => {
+    setNewSale((prevState) => {
+      const enabledOptions = selectedOptions.filter((opt) => !opt.isDisabled);
+
+      const updatedProducts = enabledOptions
+        .map((option) => {
+          const product =
+            option.product || products.find((p) => p.id === option.value);
+          if (!product) return null;
+
+          const stockCheck = checkStockAvailability(product, 1, product.unit);
+          if (!stockCheck.available) {
+            showNotification(
+              `Stock insuficiente para ${getDisplayProductName(
+                product,
+                rubro
+              )}`,
+              "error"
+            );
+            return null;
+          }
+
+          const existingProduct = prevState.products.find(
+            (p) => p.id === product.id
+          );
+
+          return (
+            existingProduct || {
+              ...product,
+              quantity: 1,
+              unit: product.unit,
+              stock: Number(product.stock),
+              price: Number(product.price),
+              basePrice:
+                Number(product.price) / convertToBaseUnit(1, product.unit),
+              costPrice: Number(product.costPrice),
+            }
+          );
+        })
+        .filter(Boolean) as Product[];
+
+      const newTotal = calculateFinalTotal(
+        updatedProducts || [],
+        prevState.manualAmount || 0,
+        selectedPromotions
+      );
+
+      // ✅ CORREGIDO: Actualizar métodos de pago
+      const updatedPaymentMethods = synchronizePaymentMethods(
+        prevState.paymentMethods,
+        newTotal
+      );
+
+      return {
+        ...prevState,
+        products: updatedProducts,
+        total: newTotal,
+        paymentMethods: updatedPaymentMethods,
+      };
+    });
+  };
+
+  const handleQuantityChange = (
+    productId: number,
+    quantity: number,
+    unit: Product["unit"]
+  ) => {
+    setNewSale((prevState) => {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return prevState;
+
+      const stockCheck = checkStockAvailability(product, quantity, unit);
+      if (!stockCheck.available) {
+        showNotification(
+          `No hay suficiente stock para ${
+            product.name
+          }. Stock disponible: ${stockCheck.availableQuantity.toFixed(2)} ${
+            stockCheck.availableUnit
+          }`,
+          "error"
+        );
+        return prevState;
+      }
+
+      const updatedProducts = prevState.products.map((p) => {
+        if (p.id === productId) {
+          return { ...p, quantity, unit };
+        }
+        return p;
+      });
+
+      const newTotal = calculateFinalTotal(
+        updatedProducts,
+        prevState.manualAmount || 0,
+        selectedPromotions
+      );
+
+      // ✅ USAR LA FUNCIÓN CORREGIDA
+      const updatedPaymentMethods = synchronizePaymentMethods(
+        prevState.paymentMethods,
+        newTotal
+      );
+
+      return {
+        ...prevState,
+        products: updatedProducts,
+        paymentMethods: updatedPaymentMethods,
+        total: newTotal,
+      };
+    });
+  };
+
+  const handleUnitChange = (
+    productId: number,
+    selectedOption: SingleValue<UnitOption>,
+    currentQuantity: number
+  ) => {
+    if (!selectedOption) return;
+
+    setNewSale((prevState) => {
+      const updatedProducts = prevState.products.map((p) => {
+        if (p.id === productId) {
+          const compatibleUnits = getCompatibleUnits(p.unit);
+          const isCompatible = compatibleUnits.some(
+            (u) => u.value === selectedOption.value
+          );
+
+          if (!isCompatible) return p;
+
+          const newUnit = selectedOption.value as Product["unit"];
+          const basePrice =
+            p.basePrice ?? p.price / convertToBaseUnit(1, p.unit);
+          const newPrice = basePrice * convertToBaseUnit(1, newUnit);
+
+          return {
+            ...p,
+            unit: newUnit,
+            quantity: currentQuantity,
+            price: parseFloat(newPrice.toFixed(2)),
+            basePrice: basePrice,
+          };
+        }
+        return p;
+      });
+
+      const newTotal = calculateFinalTotal(
+        updatedProducts,
+        prevState.manualAmount || 0,
+        selectedPromotions
+      );
+
+      return {
+        ...prevState,
+        products: updatedProducts,
+        total: newTotal,
+      };
+    });
+  };
+
+  const handleRemoveProduct = (productId: number) => {
+    setNewSale((prevState) => {
+      const updatedProducts = prevState.products.filter(
+        (p) => p.id !== productId
+      );
+
+      const newTotal = calculateFinalTotal(
+        updatedProducts,
+        prevState.manualAmount || 0,
+        selectedPromotions
+      );
+
+      // ✅ CORREGIDO: Actualizar métodos de pago cuando se remueve un producto
+      const updatedPaymentMethods = synchronizePaymentMethods(
+        prevState.paymentMethods,
+        newTotal
+      );
+
+      return {
+        ...prevState,
+        products: updatedProducts,
+        total: newTotal,
+        paymentMethods: updatedPaymentMethods,
+      };
+    });
+  };
+
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        const storedPromotions = await db.promotions.toArray();
+        const now = new Date();
+
+        const activePromotions = storedPromotions.filter((p) => {
+          // Verificar estado activo
+          if (p.status !== "active") return false;
+
+          // Verificar rubro
+          if (!(p.rubro === rubro || p.rubro === "Todos los rubros"))
+            return false;
+
+          // Verificar vigencia
+          const startDate = new Date(p.startDate);
+          const endDate = p.endDate ? new Date(p.endDate) : null;
+
+          if (now < startDate) return false;
+          if (endDate && now > endDate) return false;
+
+          return true;
+        });
+
+        setAvailablePromotions(activePromotions);
+      } catch (error) {
+        console.error("Error fetching promotions:", error);
+      }
+    };
+
+    fetchPromotions();
+  }, [rubro]);
+
   useEffect(() => {
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
@@ -1040,18 +1732,26 @@ const VentasPage = () => {
   }, [new Date().getMonth()]);
 
   useEffect(() => {
-    if (newSale.paymentMethods.length === 1) {
-      setNewSale((prev) => ({
-        ...prev,
-        paymentMethods: [
-          {
-            ...prev.paymentMethods[0],
-            amount: prev.total,
-          },
-        ],
-      }));
-    }
-  }, [newSale.total, newSale.paymentMethods.length]);
+    setNewSale((prev) => {
+      const currentPaymentTotal = prev.paymentMethods.reduce(
+        (sum, method) => sum + method.amount,
+        0
+      );
+
+      // Solo recalcular si hay una diferencia significativa
+      if (Math.abs(currentPaymentTotal - prev.total) > 0.01) {
+        return {
+          ...prev,
+          paymentMethods: synchronizePaymentMethods(
+            prev.paymentMethods,
+            prev.total
+          ),
+        };
+      }
+      return prev;
+    });
+  }, [newSale.total]);
+
   useEffect(() => {
     const fetchCustomers = async () => {
       const allCustomers = await db.customers.toArray();
@@ -1133,8 +1833,9 @@ const VentasPage = () => {
     newSale.manualAmount,
     newSale.paymentMethods.length,
     calculateCombinedTotal,
-    registerCheck, // Añadir registerCheck como dependencia
+    registerCheck,
   ]);
+
   useEffect(() => {
     if (registerCheck && newSale.paymentMethods[0]?.method === "CHEQUE") {
       setNewSale((prev) => ({
@@ -1144,178 +1845,35 @@ const VentasPage = () => {
     }
   }, [registerCheck]);
 
-  const handleProductSelect = (
-    selectedOptions: readonly {
-      value: number;
-      label: string;
-      isDisabled?: boolean;
-      product?: Product;
-    }[]
-  ) => {
-    setNewSale((prevState) => {
-      const enabledOptions = selectedOptions.filter((opt) => !opt.isDisabled);
-
-      const updatedProducts = enabledOptions
-        .map((option) => {
-          const product =
-            option.product || products.find((p) => p.id === option.value);
-          if (!product) return null;
-
-          const stockInBaseUnit = convertToUnit(
-            Number(product.stock),
-            product.unit
-          );
-          const requestedInBaseUnit = convertToUnit(1, product.unit);
-
-          if (stockInBaseUnit < requestedInBaseUnit) {
-            showNotification(
-              `Stock insuficiente para ${getDisplayProductName(
-                product,
-                rubro
-              )}`,
-              "error"
-            );
-            return null;
-          }
-
-          const existingProduct = prevState.products.find(
-            (p) => p.id === product.id
-          );
-
-          return (
-            existingProduct || {
-              ...product,
-              quantity: 1,
-              unit: product.unit,
-              stock: Number(product.stock),
-              price: Number(product.price),
-              basePrice:
-                Number(product.price) / convertToBaseUnit(1, product.unit),
-              costPrice: Number(product.costPrice),
-            }
-          );
-        })
-        .filter(Boolean) as Product[];
-
-      const newTotal = calculateCombinedTotal(updatedProducts || []);
-
-      return {
-        ...prevState,
-        products: updatedProducts,
-        total: newTotal,
-      };
-    });
-  };
-  const handleQuantityChange = (
-    productId: number,
-    quantity: number,
-    unit: Product["unit"]
-  ) => {
-    setNewSale((prevState) => {
-      const product = products.find((p) => p.id === productId);
-      if (!product) return prevState;
-      const stockInGrams = convertToUnit(Number(product.stock), product.unit);
-      const requestedInGrams = convertToUnit(quantity, unit);
-      if (requestedInGrams > stockInGrams) {
-        showNotification(
-          `No hay suficiente stock para ${product.name}. Stock disponible: ${product.stock} ${product.unit}`,
-          "error"
-        );
-        return prevState;
-      }
-
-      const updatedProducts = prevState.products.map((p) => {
-        if (p.id === productId) {
-          return { ...p, quantity, unit };
-        }
-        return p;
-      });
-
-      const newTotal = calculateCombinedTotal(updatedProducts);
-      const updatedPaymentMethods = [...prevState.paymentMethods];
-      if (updatedPaymentMethods.length > 0) {
-        updatedPaymentMethods[0].amount = newTotal;
-      }
-
-      return {
-        ...prevState,
-        products: updatedProducts,
-        paymentMethods: updatedPaymentMethods,
-        total: newTotal,
-      };
-    });
-  };
-  const handleUnitChange = (
-    productId: number,
-    selectedOption: SingleValue<UnitOption>,
-    currentQuantity: number
-  ) => {
-    if (!selectedOption) return;
-
-    setNewSale((prevState) => {
-      const updatedProducts = prevState.products.map((p) => {
-        if (p.id === productId) {
-          const compatibleUnits = getCompatibleUnits(p.unit);
-          const isCompatible = compatibleUnits.some(
-            (u) => u.value === selectedOption.value
-          );
-
-          if (!isCompatible) return p;
-
-          const newUnit = selectedOption.value as Product["unit"];
-          const basePrice =
-            p.basePrice ?? p.price / convertToBaseUnit(1, p.unit);
-          const newPrice = basePrice * convertToBaseUnit(1, newUnit);
-
-          return {
-            ...p,
-            unit: newUnit,
-            quantity: currentQuantity,
-            price: parseFloat(newPrice.toFixed(2)),
-            basePrice: basePrice,
-          };
-        }
-        return p;
-      });
-
-      return {
-        ...prevState,
-        products: updatedProducts,
-        total:
-          calculateCombinedTotal(updatedProducts) +
-          (prevState.manualAmount || 0),
-      };
-    });
-  };
-  const handleRemoveProduct = (productId: number) => {
-    setNewSale((prevState) => {
-      const updatedProducts = prevState.products.filter(
-        (p) => p.id !== productId
-      );
-
-      return {
-        ...prevState,
-        products: updatedProducts,
-        total:
-          calculateCombinedTotal(updatedProducts) +
-          (prevState.manualAmount || 0),
-      };
-    });
-  };
-
-  const indexOfLastSale = currentPage * itemsPerPage;
-  const indexOfFirstSale = indexOfLastSale - itemsPerPage;
-  const currentSales = filteredSales.slice(indexOfFirstSale, indexOfLastSale);
-
-  const pageNumbers = [];
-  for (let i = 1; i <= Math.ceil(filteredSales.length / itemsPerPage); i++) {
-    pageNumbers.push(i);
-  }
   useEffect(() => {
     if (shouldRedirectToCash) {
       router.push("/caja-diaria");
     }
   }, [shouldRedirectToCash, router]);
+
+  useEffect(() => {
+    const expectedTotal = calculateFinalTotal(
+      newSale.products,
+      newSale.manualAmount || 0,
+      selectedPromotions
+    );
+
+    // Solo actualizar si hay una diferencia significativa y la promoción está activa
+    if (Math.abs(newSale.total - expectedTotal) > 0.01 && selectedPromotions) {
+      setNewSale((prev) => ({
+        ...prev,
+        total: expectedTotal,
+        paymentMethods: synchronizePaymentMethods(
+          prev.paymentMethods,
+          expectedTotal
+        ),
+      }));
+    }
+  }, [newSale.products, newSale.manualAmount, selectedPromotions]);
+
+  const indexOfLastSale = currentPage * itemsPerPage;
+  const indexOfFirstSale = indexOfLastSale - itemsPerPage;
+  const currentSales = filteredSales.slice(indexOfFirstSale, indexOfLastSale);
 
   return (
     <ProtectedRoute>
@@ -1518,8 +2076,6 @@ const VentasPage = () => {
                 ) : (
                   <tr className="h-[50vh] 2xl:h-[calc(63vh-2px)]">
                     <td colSpan={6} className="py-4 text-center">
-                      {" "}
-                      {/* Actualizar colSpan a 6 */}
                       <div className="flex flex-col items-center justify-center text-gray_m dark:text-white">
                         <ShoppingCart size={64} className="mb-4 text-gray_m" />
                         <p className="text-gray_m">Todavía no hay ventas.</p>
@@ -1606,12 +2162,30 @@ const VentasPage = () => {
             </div>
           }
         >
-          <div className="overflow-y-auto">
-            <div className="flex flex-col min-h-[50vh] 2xl:min-h-[60vh] max-h-[35vh] 2xl:max-h-[55vh]  overflow-y-auto">
+          <div className="overflow-y-auto  -mt-4">
+            <div className="flex flex-col min-h-[50vh] 2xl:min-h-[60vh] max-h-[33vh] 2xl:max-h-[55vh] overflow-y-auto px-4 2xl:px-10">
               <form
                 onSubmit={handleConfirmAddSale}
                 className="flex flex-col gap-2"
               >
+                {/* Sección de Promociones */}
+                <div className="flex items-center justify-between ">
+                  <Button
+                    title="Aplicar promociones"
+                    text="Seleccionar Promociones"
+                    icon={<Tag size={16} />}
+                    iconPosition="left"
+                    colorText="text-white"
+                    colorTextHover="text-white"
+                    px="px-3"
+                    py="py-2"
+                    onClick={() => setIsPromotionModalOpen(true)}
+                    disabled={newSale.products.length === 0}
+                  />
+                  <div className="flex-1">
+                    <SelectedPromotionsBadge />
+                  </div>
+                </div>
                 <div className="w-full flex items-center space-x-4">
                   <div className="w-full  ">
                     <label className="block text-sm font-medium text-gray_m dark:text-white">
@@ -1674,6 +2248,7 @@ const VentasPage = () => {
                     />
                   </div>
                 </div>
+
                 {newSale.products.length > 0 && (
                   <div className=" max-h-[16rem] overflow-y-auto ">
                     <table className="table-auto w-full shadow">
@@ -1779,34 +2354,40 @@ const VentasPage = () => {
                                 />
                               </td>{" "}
                               <td className="w-20 max-w-20 p-2">
-                                <Input
-                                  textPosition="text-center"
-                                  type="number"
-                                  value={product.discount?.toString() || "0"}
-                                  onChange={(e) => {
-                                    const value = Math.min(
-                                      100,
-                                      Math.max(0, Number(e.target.value))
-                                    );
-                                    setNewSale((prev) => {
-                                      const updatedProducts = prev.products.map(
-                                        (p) =>
-                                          p.id === product.id
-                                            ? { ...p, discount: value }
-                                            : p
+                                <div className="relative">
+                                  <Input
+                                    textPosition="text-center"
+                                    type="number"
+                                    value={product.discount?.toString() || "0"}
+                                    onChange={(e) => {
+                                      const value = Math.min(
+                                        100,
+                                        Math.max(0, Number(e.target.value))
                                       );
-                                      return {
-                                        ...prev,
-                                        products: updatedProducts,
-                                        total: calculateTotal(
+                                      setNewSale((prev) => {
+                                        const updatedProducts =
+                                          prev.products.map((p) =>
+                                            p.id === product.id
+                                              ? { ...p, discount: value }
+                                              : p
+                                          );
+
+                                        const newTotal = calculateFinalTotal(
                                           updatedProducts,
-                                          prev.manualAmount || 0
-                                        ),
-                                      };
-                                    });
-                                  }}
-                                  step="1"
-                                />
+                                          prev.manualAmount || 0,
+                                          selectedPromotions
+                                        );
+
+                                        return {
+                                          ...prev,
+                                          products: updatedProducts,
+                                          total: newTotal,
+                                        };
+                                      });
+                                    }}
+                                    step="1"
+                                  />
+                                </div>
                               </td>
                               <td className="w-20 max-w-20 p-2">
                                 <Input
@@ -1826,18 +2407,16 @@ const VentasPage = () => {
                                             : p
                                       );
 
-                                      // Recalcular total y ganancias
-                                      const productsTotal =
-                                        calculateCombinedTotal(updatedProducts);
-                                      const manualAmount =
-                                        prev.manualAmount || 0;
-                                      const total =
-                                        productsTotal + manualAmount;
+                                      const newTotal = calculateFinalTotal(
+                                        updatedProducts,
+                                        prev.manualAmount || 0,
+                                        selectedPromotions
+                                      );
 
                                       return {
                                         ...prev,
                                         products: updatedProducts,
-                                        total: total,
+                                        total: newTotal,
                                       };
                                     });
                                   }}
@@ -1870,7 +2449,6 @@ const VentasPage = () => {
                                   <Trash size={18} />
                                 </button>
                               </td>
-                              <div></div>
                             </tr>
                           );
                         })}
@@ -1951,9 +2529,10 @@ const VentasPage = () => {
                               setNewSale((prev) => ({
                                 ...prev,
                                 manualProfitPercentage: value || 0,
-                                total: calculateTotal(
+                                total: calculateFinalTotal(
                                   prev.products,
-                                  prev.manualAmount || 0
+                                  prev.manualAmount || 0,
+                                  selectedPromotions
                                 ),
                               }));
                             }}
@@ -2112,7 +2691,7 @@ const VentasPage = () => {
                       }))
                     }
                     placeholder="Ingrese un concepto para esta venta..."
-                    className="w-full p-2 border border-gray_xl rounded-md text-sm text-gray_b dark:text-white bg-white dark:bg-gray_m resize-none"
+                    className="w-full p-2 border border-gray_l rounded-md text-sm text-gray_b dark:text-white bg-white dark:bg-gray_m resize-none"
                     rows={3}
                     maxLength={50}
                   />
@@ -2193,6 +2772,9 @@ const VentasPage = () => {
             </div>
           </div>
         </Modal>
+
+        {/* Modal de selección de promociones */}
+        <PromotionSelectionModal />
 
         <Notification
           isOpen={isNotificationOpen}

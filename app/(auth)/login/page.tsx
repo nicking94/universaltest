@@ -7,7 +7,7 @@ import Notification from "@/app/components/Notification";
 import { AuthData } from "@/app/lib/types/types";
 import { TRIAL_CREDENTIALS, USERS } from "@/app/lib/constants/constants";
 import { db } from "../../database/db";
-import Common from "@/app/components/LoginScreens/Common";
+import Navidad from "@/app/components/LoginScreens/Navidad";
 
 const LoginPage = () => {
   const router = useRouter();
@@ -248,7 +248,7 @@ const LoginPage = () => {
         acceptedTerms={acceptedTerms}
         onTermsCheckboxChange={setAcceptedTerms}
       />
-      <Common />
+      <Navidad />
 
       <Notification
         isOpen={isOpenNotification}
