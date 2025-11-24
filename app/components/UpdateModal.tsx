@@ -25,9 +25,9 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
     if (isUpdating) {
       setProgress(0);
 
-      // Simular progreso durante 4 segundos
+      // Simular progreso durante 2 segundos
       const startTime = Date.now();
-      const duration = 4000; // 4 segundos
+      const duration = 2000; // 2 segundos
 
       progressInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
