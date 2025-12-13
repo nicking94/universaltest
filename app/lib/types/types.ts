@@ -67,7 +67,7 @@ export type SidebarContextProps = {
 export type NotificationProps = {
   isOpen: boolean;
   message: string;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "warning";
 };
 
 export type ModalProps = {
@@ -113,6 +113,23 @@ export type UserMenuProps = {
 };
 
 export type Rubro = "Todos los rubros" | "comercio" | "indumentaria" | string;
+
+export type PriceList = {
+  id: number;
+  name: string;
+  rubro: Rubro;
+  isDefault: boolean;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ProductPrice = {
+  productId: number;
+  priceListId: number;
+  price: number;
+  costPrice?: number;
+};
 
 export type Product = {
   id: number;
@@ -167,6 +184,9 @@ export type Product = {
   season?: string;
   setMinStock?: boolean;
   minStock?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  priceListId?: number;
 };
 export type ProductDisplayInfo = {
   name: string;
@@ -185,9 +205,14 @@ export type UnitOption = {
 export type SearchBarProps = {
   onSearch: (query: string) => void;
 };
-// En tus tipos/types.ts
 
-export type Sale = {
+export type EditMode = {
+  isEditing: boolean;
+  originalSaleId?: number;
+  originalCashMovementIds?: number[];
+};
+
+export interface Sale {
   id: number;
   products: Product[];
   paymentMethods: PaymentSplit[];
@@ -212,7 +237,15 @@ export type Sale = {
   };
   concept?: string;
   appliedPromotion?: Promotion;
-};
+  edited?: boolean;
+  editHistory?: {
+    date: string;
+    changes: Partial<Sale>;
+    previousTotal: number;
+    newTotal: number;
+  }[];
+  priceListId?: number;
+}
 
 export type SaleItem = {
   productId: number;
