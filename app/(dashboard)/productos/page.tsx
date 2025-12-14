@@ -58,9 +58,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  FormControl,
-  InputLabel,
-  TextField,
 } from "@mui/material";
 import Input from "@/app/components/Input";
 import Button from "@/app/components/Button";
@@ -2241,9 +2238,40 @@ const ProductsPage = () => {
           flexDirection: "column",
         }}
       >
-        <Typography variant="h5" fontWeight="semibold" mb={2}>
-          Productos
-        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+            width: "100%",
+          }}
+        >
+          <Typography variant="h5" fontWeight="semibold">
+            Productos
+          </Typography>
+
+          {/* Selector de lista de precios */}
+          {rubro !== "Todos los rubros" && priceLists.length > 0 && (
+            <Select
+              label="Lista de precios"
+              options={priceLists.map((list) => ({
+                value: list.id,
+                label: `${list.name}${list.isDefault ? " (Por defecto)" : ""}`,
+                metadata: list,
+              }))}
+              value={selectedPriceListId || ""}
+              onChange={(value) => {
+                const newValue = value ? Number(value) : null;
+                setSelectedPriceListId(newValue);
+              }}
+              fullWidth={false}
+              sx={{ minWidth: 200 }}
+              size="small"
+              getOptionId={(option) => option.metadata?.id}
+            />
+          )}
+        </Box>
 
         {/* Header con búsqueda y acciones */}
         <Box
@@ -2280,33 +2308,6 @@ const ProductsPage = () => {
               visibility: rubro === "Todos los rubros" ? "hidden" : "visible",
             }}
           >
-            {/* Selector de lista de precios */}
-            {rubro !== "Todos los rubros" && priceLists.length > 0 && (
-              <FormControl sx={{ minWidth: 200 }} size="small">
-                <InputLabel>Lista de precios</InputLabel>
-                <Autocomplete
-                  options={priceLists}
-                  value={
-                    priceLists.find(
-                      (list) => list.id === selectedPriceListId
-                    ) || null
-                  }
-                  onChange={(event, newValue) => {
-                    setSelectedPriceListId(newValue?.id || null);
-                  }}
-                  getOptionLabel={(option) =>
-                    `${option.name}${option.isDefault ? " (Por defecto)" : ""}`
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Lista de precios"
-                      size="small"
-                    />
-                  )}
-                />
-              </FormControl>
-            )}
             <Button
               variant="contained"
               onClick={handleAddProduct}
@@ -2353,7 +2354,7 @@ const ProductsPage = () => {
           <Box sx={{ flex: 1, minHeight: "auto" }}>
             <TableContainer
               component={Paper}
-              sx={{ maxHeight: "63vh", mb: 2, flex: 1 }}
+              sx={{ maxHeight: "62vh", mb: 2, flex: 1 }}
             >
               <Table stickyHeader>
                 <TableHead>
@@ -2724,7 +2725,7 @@ const ProductsPage = () => {
                     .map((ret, index) => (
                       <tr
                         key={index}
-                        className="hover:bg-gray_xxl dark:hover:bg-blue_xl transition-all duration-300"
+                        className="hover:bg-gray_xxl dark:hover:bg-gray_m transition-all duration-300"
                       >
                         <td className="p-2">{ret.productName}</td>
                         <td className="p-2">{ret.reason}</td>
