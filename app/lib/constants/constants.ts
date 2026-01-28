@@ -54,7 +54,7 @@ export const USERS = [
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_6,
     id: 6,
     isTrial: false,
-    isActive: true,
+    isActive: false,
     paymentReminderDay: 26,
   },
   //  Cliente 3
@@ -83,7 +83,7 @@ export const USERS = [
     id: 10,
     isTrial: false,
     isActive: true,
-    paymentReminderDay: 24,
+    paymentReminderDay: 26,
   },
 ];
 export const PAYMENT_REMINDERS_CONFIG = [
@@ -113,7 +113,7 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
   {
     username: "Rjotaimportados",
-    reminderDay: 24,
+    reminderDay: 26,
   },
 ];
 
