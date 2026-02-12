@@ -131,4 +131,4 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
 ];
 
-export const APP_VERSION = "1.1.2";
+export const APP_VERSION = "1.5.8";
