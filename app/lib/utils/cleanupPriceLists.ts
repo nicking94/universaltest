@@ -71,28 +71,13 @@ export const cleanupDuplicatePriceLists = async (): Promise<void> => {
           // Eliminar duplicados
           for (const listToDelete of listsToDelete) {
             try {
-              // Verificar si tiene precios asociados
-              const productPricesCount = await db.productPrices
-                .where("priceListId")
-                .equals(listToDelete.id)
-                .count();
+              // Eliminar los precios asociados a esta lista de productos para no dejar basura.
+              await db.productPrices.where("priceListId").equals(listToDelete.id).delete();
 
-              // Verificar si tiene ventas asociadas
-              const salesCount = await db.sales
-                .where("priceListId")
-                .equals(listToDelete.id)
-                .count();
-
-              if (productPricesCount === 0 && salesCount === 0) {
-                await db.priceLists.delete(listToDelete.id);
-                console.log(
-                  `  ✅ Eliminada lista duplicada: ID ${listToDelete.id} ("${listToDelete.name}") en rubro ${listToDelete.rubro}`
-                );
-              } else {
-                console.log(
-                  `  ⚠️ No se puede eliminar lista ID ${listToDelete.id} - tiene ${productPricesCount} precios y ${salesCount} ventas asociadas`
-                );
-              }
+              await db.priceLists.delete(listToDelete.id);
+              console.log(
+                `  ✅ Eliminada lista duplicada: ID ${listToDelete.id} ("${listToDelete.name}") en rubro ${listToDelete.rubro}`
+              );
             } catch (error) {
               console.error(
                 `  ❌ Error procesando lista ID ${listToDelete.id}:`,

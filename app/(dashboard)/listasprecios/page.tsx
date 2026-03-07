@@ -193,37 +193,12 @@ const PriceListsManager: React.FC<{
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!listToDelete) return;
 
     try {
-      // Verificar si hay productos usando esta lista
-      const productPrices = await db.productPrices
-        .where("priceListId")
-        .equals(listToDelete.id)
-        .count();
-
-      if (productPrices > 0) {
-        showNotificationRef.current(
-          "No se puede eliminar porque hay productos usando esta lista",
-          "error"
-        );
-        return;
-      }
-
-      // Verificar si hay ventas usando esta lista
-      const salesWithList = await db.sales
-        .where("priceListId")
-        .equals(listToDelete.id)
-        .count();
-
-      if (salesWithList > 0) {
-        showNotificationRef.current(
-          "No se puede eliminar porque hay ventas usando esta lista",
-          "error"
-        );
-        return;
-      }
+      // Eliminar los precios asociados a esta lista de productos para no dejar basura.
+      await db.productPrices.where("priceListId").equals(listToDelete.id).delete();
 
       await db.priceLists.delete(listToDelete.id);
       showNotificationRef.current("Lista eliminada", "success");
@@ -235,7 +210,7 @@ const PriceListsManager: React.FC<{
       setIsDeleteModalOpen(false);
       setListToDelete(null);
     }
-  };
+  }, [listToDelete, loadPriceLists]);
 
   // Función para abrir el modal de productos
   const handleViewProducts = (list: PriceList) => {
