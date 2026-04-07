@@ -91,7 +91,7 @@ export const USERS = [
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_11,
     id: 12,
     isTrial: false,
-    isActive: false,
+    isActive: true,
     paymentReminderDay: 4,
   },
   //  Cliente 8
@@ -134,14 +134,14 @@ export const PAYMENT_REMINDERS_CONFIG = [
     username: "Kioscodreyer",
     reminderDay: 1,
   },
-  // {
-  //   username: "Univentas",
-  //   reminderDay: 4,
-  // },
+  {
+    username: "Univentas",
+    reminderDay: 4,
+  },
   {
     username: "admin",
     reminderDay: 21,
   },
 ];
 
-export const APP_VERSION = "1.1.6";
+export const APP_VERSION = "1.1.7";
