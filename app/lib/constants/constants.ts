@@ -140,8 +140,8 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
   {
     username: "admin",
-    reminderDay: 21,
+    reminderDay: 22,
   },
 ];
 
-export const APP_VERSION = "1.1.7";
+export const APP_VERSION = "1.1.8";
