@@ -57,15 +57,6 @@ export const USERS = [
     isActive: true,
     paymentReminderDay: 26,
   },
-  //  Cliente 3
-  {
-    username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_7,
-    password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_7,
-    id: 7,
-    isTrial: false,
-    isActive: true,
-    paymentReminderDay: 10,
-  },
   //  Cliente 5
   {
     username: process.env.NEXT_PUBLIC_LOGIN_USERNAME_8,
@@ -121,10 +112,7 @@ export const PAYMENT_REMINDERS_CONFIG = [
     username: "CaroPerfu",
     reminderDay: 26,
   },
-  {
-    username: "brune2804",
-    reminderDay: 10,
-  },
+
   {
     username: "Electro25",
     reminderDay: 24,
@@ -144,4 +132,4 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
 ];
 
-export const APP_VERSION = "1.1.9";
+export const APP_VERSION = "1.2.0";

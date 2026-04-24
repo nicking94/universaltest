@@ -141,6 +141,13 @@ export const systemActualizations: Actualization[] = [
       "- El 15 de abril la aplicación se actualizará y se dejará de ingresar a este link con usuario (se ingresará con email). Por favor, si aún no ha confirmado su email, pongase en contacto con el soporte técnico. Muchas gracias...",
     date: new Date().toISOString(),
   },
+  {
+    id: 20,
+    title: `RECORDATORIO IMPORTANTE`,
+    message:
+      "- El 15 de Mayo el sistema actual dejará de funcionar y se ingresará a la nueva versión a traves de www.universalappgestion.com. Por favor, recuerde exportar sus datos antes del 15 de Mayo para poder ingresar a la nueva versión. Muchas gracias...",
+    date: new Date().toISOString(),
+  },
 ];
 
 export const getUnshownActualizations = async (): Promise<Actualization[]> => {
