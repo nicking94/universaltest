@@ -73,7 +73,7 @@ export const USERS = [
     password: process.env.NEXT_PUBLIC_LOGIN_PASSWORD_10,
     id: 11,
     isTrial: false,
-    isActive: true,
+    isActive: false,
     paymentReminderDay: 1,
   },
   //  Cliente 7
@@ -132,4 +132,4 @@ export const PAYMENT_REMINDERS_CONFIG = [
   },
 ];
 
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.3.0";
